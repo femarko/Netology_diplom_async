@@ -20,6 +20,7 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
 from backend.signals import new_user_registered, new_order
+from backend.tasks import get_yaml_data, update_prcie_list
 
 
 class RegisterAccount(APIView):
@@ -429,33 +430,11 @@ class PartnerUpdate(APIView):
             except ValidationError as e:
                 return JsonResponse({'Status': False, 'Error': str(e)})
             else:
-                stream = get(url).content
+                user_id = request.user.id
+                data = get_yaml_data.delay(url)
+                update_status = update_prcie_list.delay(data, user_id)
+            return JsonResponse({'Status': True})
 
-                data = load_yaml(stream, Loader=Loader)
-
-                shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
-                for category in data['categories']:
-                    category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
-                    category_object.shops.add(shop.id)
-                    category_object.save()
-                ProductInfo.objects.filter(shop_id=shop.id).delete()
-                for item in data['goods']:
-                    product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
-
-                    product_info = ProductInfo.objects.create(product_id=product.id,
-                                                              external_id=item['id'],
-                                                              model=item['model'],
-                                                              price=item['price'],
-                                                              price_rrc=item['price_rrc'],
-                                                              quantity=item['quantity'],
-                                                              shop_id=shop.id)
-                    for name, value in item['parameters'].items():
-                        parameter_object, _ = Parameter.objects.get_or_create(name=name)
-                        ProductParameter.objects.create(product_info_id=product_info.id,
-                                                        parameter_id=parameter_object.id,
-                                                        value=value)
-
-                return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
