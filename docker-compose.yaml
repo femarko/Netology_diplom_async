@@ -11,9 +11,9 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234_secret
-      POSTGRES_DB: app
-    container_name: users_api_db_main
+      POSTGRES_PASSWORD: FemarData
+      POSTGRES_DB: db_dipl_async
+    container_name: db_dipl_async
     networks:
       dev_network:
         aliases:
@@ -30,53 +30,33 @@ services:
         aliases:
           - db-redis
 
-  mongo:
-    image: mongo:4.4.14
-    restart: always
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: app
-      MONGO_INITDB_ROOT_PASSWORD: 1234_secret
-    depends_on:
-      - redis
-    networks:
-      dev_network:
-        aliases:
-          - db-mongo
-
-  app:
+  django:
     build:
       context: .
     environment:
-      PG_DSN: 'postgresql://app:1234_secret@db-postgre:5432/app'
-      MONGO_DSN: "mongodb://app:1234_secret@db-mongo:27017/files?authSource=admin"
       CELERY_BROKER: "redis://db-redis:6379/4"
 
     ports:
       - "5000:5000"
-    container_name: app
+    container_name: dipl_async_app
     depends_on:
-      - mongo
+      - postgre
+      - redis
+      - celery
     networks:
       dev_network:
         aliases:
-          - flask
-    volumes:
-      - ./app:/app
+          - django
+
 
   celery:
     build:
       context: .
       dockerfile: Dockerfile.celery
     environment:
-      PG_DSN: 'postgresql+psycopg2://app:1234_secret@db-postgre:5432/app'
-      MONGO_DSN: "mongodb://app:1234_secret@db-mongo:27017/files?authSource=admin"
       CELERY_BROKER: "redis://db-redis:6379/4"
     container_name: celery
     depends_on:
-      - mongo
+      - redis
     networks:
       dev_network:
-    volumes:
-      - ./app:/app
