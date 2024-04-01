@@ -20,7 +20,7 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
 from backend.signals import new_user_registered, new_order
-from backend.tasks import get_yaml_data, update_prcie_list
+from backend.tasks import get_yaml_data, update_price_list
 
 
 class RegisterAccount(APIView):
@@ -432,7 +432,7 @@ class PartnerUpdate(APIView):
             else:
                 user_id = request.user.id
                 data = get_yaml_data.delay(url)
-                update_status = update_prcie_list.delay(data, user_id)
+                update_status = update_price_list.delay(data, user_id)
             return JsonResponse({'Status': True})
 
 

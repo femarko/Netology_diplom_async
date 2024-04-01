@@ -5,49 +5,30 @@ networks:
 
 services:
 
-  postgre:
-    image: postgres:14.3-alpine3.16
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: FemarData
-      POSTGRES_DB: db_dipl_async
-    container_name: db_dipl_async
-    networks:
-      dev_network:
-        aliases:
-          - db-postgre
+#  postgre:
+#    image: postgres:14.3-alpine3.16
+#    ports:
+#      - "5432:5432"
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: FemarData
+#      POSTGRES_DB: db_dipl_async
+#    container_name: db_dipl_async
+#    networks:
+#      dev_network:
+#        aliases:
+#          - db-postgre
 
   redis:
     image: redis:7.0.0-alpine3.15
     ports:
       - "6379:6379"
-    depends_on:
-      - postgre
+#    depends_on:
+#      - postgre
     networks:
       dev_network:
         aliases:
           - db-redis
-
-  django:
-    build:
-      context: .
-    environment:
-      CELERY_BROKER: "redis://db-redis:6379/4"
-
-    ports:
-      - "5000:5000"
-    container_name: dipl_async_app
-    depends_on:
-      - postgre
-      - redis
-      - celery
-    networks:
-      dev_network:
-        aliases:
-          - django
-
 
   celery:
     build:
@@ -60,3 +41,22 @@ services:
       - redis
     networks:
       dev_network:
+
+#  django:
+#    build:
+#      context: .
+#    environment:
+#      CELERY_BROKER: "redis://db-redis:6379/4"
+#    env_file:
+#      - .env
+#    ports:
+#      - "5000:5000"
+#    container_name: dipl_async_app
+#    depends_on:
+#      - postgre
+#      - redis
+#      - celery
+#    networks:
+#      dev_network:
+#        aliases:
+#          - django

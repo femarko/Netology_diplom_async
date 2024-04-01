@@ -4,6 +4,7 @@ from requests import get
 from yaml import load as load_yaml, Loader
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter
 
+
 @shared_task
 def get_yaml_data(url):
     stream = get(url).content
@@ -12,7 +13,7 @@ def get_yaml_data(url):
 
 
 @shared_task
-def update_prcie_list(data, user_id):
+def update_price_list(data, user_id):
     shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=user_id)
     for category in data['categories']:
         category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
