@@ -109,4 +109,5 @@ req.txt
 
 pattern_docker-compose.yml
 shop1.yaml
+data/
 
