@@ -107,4 +107,6 @@ venv.bak/
 req.txt
 
 
-pattern_docker-compose.yaml
+pattern_docker-compose.yml
+shop1.yaml
+
