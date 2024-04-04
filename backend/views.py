@@ -431,8 +431,8 @@ class PartnerUpdate(APIView):
                 return JsonResponse({'Status': False, 'Error': str(e)})
             else:
                 user_id = request.user.id
-                data = get_yaml_data.delay(url)
-                update_status = update_price_list.delay(data, user_id)
+                data = get_yaml_data.delay(url).get()
+                update_price_list.delay(data, user_id)
             return JsonResponse({'Status': True})
 
 
