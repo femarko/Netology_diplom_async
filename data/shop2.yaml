@@ -2,10 +2,10 @@ shop: Связной
 categories:
   - id: 224
     name: Смартфоны
-  - id: 15
-    name: Аксессуары
-  - id: 1
-    name: Flash
+#  - id: 15
+#    name: Аксессуары
+#  - id: 1
+#    name: Flash
 
 goods:
   - id: 42162
