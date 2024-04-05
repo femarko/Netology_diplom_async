@@ -13,9 +13,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from ujson import loads as load_json
-from yaml import load as load_yaml, Loader
 from celery.result import AsyncResult
-from celery.exceptions import CeleryError
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
@@ -402,7 +400,8 @@ class PartnerUpdate(APIView):
     A class for updating partner information.
 
     Methods:
-    - post: Update the partner information.
+    - post: Update the partner information
+    - get: Returns status of the celery task
 
     Attributes:
     - None
