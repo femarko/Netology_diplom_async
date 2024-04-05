@@ -14,6 +14,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from ujson import loads as load_json
 from yaml import load as load_yaml, Loader
+from celery.result import AsyncResult
+from celery.exceptions import CeleryError
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
@@ -432,8 +434,11 @@ class PartnerUpdate(APIView):
             else:
                 user_id = request.user.id
                 data = get_yaml_data.delay(url).get()
-                update_price_list.delay(data, user_id)
-            return JsonResponse({'Status': True})
+                try:
+                    update_price_list.delay(data, user_id)
+                except CeleryError as ce:
+                    return JsonResponse({'Status': False, 'Error': str(ce)})
+                return JsonResponse({'Status': True})
 
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
