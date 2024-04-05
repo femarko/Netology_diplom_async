@@ -8,8 +8,8 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 @shared_task
 def get_yaml_data(url):
     stream = get(url).content
-    data = load_yaml(stream, Loader=Loader)
-    return data
+    pr_list_content = load_yaml(stream, Loader=Loader)
+    return pr_list_content
 
 
 @shared_task

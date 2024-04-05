@@ -1,4 +1,4 @@
-shop: M
+shop: Связной
 categories:
   - id: 224
     name: Смартфоны
@@ -11,7 +11,7 @@ goods:
   - id: 42162
     category: 224
     model: sumsung/galaxy
-    name: Смартфон (good)
+    name: SmartPhone (good)
     price: 110000
     price_rrc: 116990
     quantity: 14
@@ -23,7 +23,7 @@ goods:
   - id: 42113
     category: 224
     model: sdsdv/sdvs/vvv
-    name: Смартфон sdfb (красный)
+    name: SmartPhone sdfb (красный)
     price: 65000
     price_rrc: 69990
     quantity: 9
@@ -35,7 +35,7 @@ goods:
   - id: 21226
     category: 224
     model: huiolmjk
-    name: hjklpoi (черный)
+    name: SmartPhone (черный)
     price: 65000
     price_rrc: 69990
     quantity: 5
@@ -47,7 +47,7 @@ goods:
   - id: 72670
     category: 224
     model: vbhijnmk
-    name: llkjfbh (синий)
+    name: SmartPhone (синий)
     price: 60000
     price_rrc: 64990
     quantity: 7
