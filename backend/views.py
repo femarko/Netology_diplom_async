@@ -448,7 +448,8 @@ class PartnerUpdate(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-    def get(self, task_id):
+    def get(self, request, task_id):
+        task_id = str(request.data.get("task_id"))
         task = AsyncResult(task_id)
         return JsonResponse({'task_status': task.status})
 

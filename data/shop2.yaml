@@ -10,7 +10,7 @@ goods:
     name: SmartPhone (good)
     price: 110000
     price_rrc: 116990
-    quantity: 10
+    quantity: 100
     parameters:
       "Диагональ (дюйм)": 6.5
       "Разрешение (пикс)": 2688x1242
@@ -22,7 +22,7 @@ goods:
     name: SmartPhone sdfb (красный)
     price: 65000
     price_rrc: 69990
-    quantity: 10
+    quantity: 100
     parameters:
       "Диагональ (дюйм)": 6.1
       "Разрешение (пикс)": 1792x828
@@ -34,7 +34,7 @@ goods:
     name: SmartPhone (черный)
     price: 65000
     price_rrc: 69990
-    quantity: 10
+    quantity: 100
     parameters:
       "Диагональ (дюйм)": 6.1
       "Разрешение (пикс)": 1792x828
@@ -46,7 +46,7 @@ goods:
     name: SmartPhone (синий)
     price: 60000
     price_rrc: 64990
-    quantity: 10
+    quantity: 100
     parameters:
       "Диагональ (дюйм)": 6.1
       "Разрешение (пикс)": 1792x828
