@@ -434,19 +434,23 @@ class PartnerUpdate(APIView):
             else:
                 user_id = request.user.id
                 yaml_content_async_res = get_yaml_data.delay(url)
-                task_id = yaml_content_async_res.id
+                # task_id = yaml_content_async_res.id
                 try:
                     data = yaml_content_async_res.get()
                     asyns_result = update_price_list.delay(data, user_id)
                     task_id = asyns_result.id
-                    task = AsyncResult(task_id)
                 except:
                     return JsonResponse({'Status': False, 'Error': 'Error occured when updating price-list'})
                 else:
-                    return JsonResponse({'Status': task.status, 'Result': task.result})
+                    return JsonResponse({'task_id': task_id})
 
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+    def get(self, task_id):
+        task = AsyncResult(task_id)
+        return JsonResponse({'task_status': task.status})
 
 
 class PartnerState(APIView):
