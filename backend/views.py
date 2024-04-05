@@ -443,8 +443,7 @@ class PartnerUpdate(APIView):
                     return JsonResponse({'task_id': task_id})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-    def get(self, request, task_id: int) -> AsyncResult.status:
-        task_id = str(task_id)
+    def get(self, request, task_id: str) -> AsyncResult.status:
         task = AsyncResult(task_id)
         return JsonResponse({'task_status': task.status})
 
