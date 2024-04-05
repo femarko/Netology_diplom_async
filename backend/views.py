@@ -449,7 +449,7 @@ class PartnerUpdate(APIView):
 
 
     def get(self, request, task_id):
-        task_id = str(request.data.get("task_id"))
+        task_id = str(task_id)
         task = AsyncResult(task_id)
         return JsonResponse({'task_status': task.status})
 
