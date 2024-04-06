@@ -1,19 +1,13 @@
 from celery import shared_task
-from django.http import JsonResponse
 from requests import get
 from yaml import load as load_yaml, Loader
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter
 
 
 @shared_task
-def get_yaml_data(url):
+def update_price_list(url, user_id):
     stream = get(url).content
-    pr_list_content = load_yaml(stream, Loader=Loader)
-    return pr_list_content
-
-
-@shared_task
-def update_price_list(data, user_id):
+    data = load_yaml(stream, Loader=Loader)
     shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=user_id)
     for category in data['categories']:
         category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
@@ -34,4 +28,3 @@ def update_price_list(data, user_id):
             ProductParameter.objects.create(product_info_id=product_info.id,
                                             parameter_id=parameter_object.id,
                                             value=value)
-

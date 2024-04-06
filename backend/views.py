@@ -7,7 +7,6 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
-from requests import get
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -20,7 +19,7 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
 from backend.signals import new_user_registered, new_order
-from backend.tasks import get_yaml_data, update_price_list
+from backend.tasks import update_price_list
 
 
 class RegisterAccount(APIView):
@@ -432,10 +431,8 @@ class PartnerUpdate(APIView):
                 return JsonResponse({'Status': False, 'Error': str(e)})
             else:
                 user_id = request.user.id
-                yaml_content_async_res = get_yaml_data.delay(url)
                 try:
-                    data = yaml_content_async_res.get()
-                    asyns_result = update_price_list.delay(data, user_id)
+                    asyns_result = update_price_list.delay(url, user_id)
                     task_id = asyns_result.id
                 except:
                     return JsonResponse({'Status': False, 'Error': 'Error occured when updating price-list'})
