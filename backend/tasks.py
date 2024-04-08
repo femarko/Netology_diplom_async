@@ -41,25 +41,25 @@ def password_reset_token_created_task(sender, instance, reset_password_token, **
 
 
 @shared_task
-def new_user_registered_signal_task(sender: Type[User], instance: User, created: bool, **kwargs):
+def new_user_registered_signal_task(email, token_key):
     """
      отправляем письмо с подтрердждением почты
     """
-    if created and not instance.is_active:
-        # send an e-mail to the user
-        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
+    # if created and not instance.is_active:
+    #     # send an e-mail to the user
+    #     token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
 
-        msg = EmailMultiAlternatives(
-            # title:
-            f"Password Reset Token for {instance.email}",
-            # message:
-            token.key,
-            # from:
-            settings.EMAIL_HOST_USER,
-            # to:
-            [instance.email]
-        )
-        msg.send()
+    msg = EmailMultiAlternatives(
+        # title:
+        f"Password Reset Token for {email}",
+        # message:
+        token_key,
+        # from:
+        settings.EMAIL_HOST_USER,
+        # to:
+        [email]
+    )
+    msg.send()
 
 
 @shared_task

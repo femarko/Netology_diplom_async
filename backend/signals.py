@@ -8,7 +8,7 @@ from django_rest_passwordreset.signals import reset_password_token_created
 
 from backend.models import ConfirmEmailToken, User
 
-from backend.tasks import password_reset_token_created_task, new_user_registered_signal_task, new_order_signal_task
+from .tasks import password_reset_token_created_task, new_user_registered_signal_task, new_order_signal_task
 
 new_user_registered = Signal()
 
@@ -49,10 +49,13 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     """
      отправляем письмо с подтрердждением почты
     """
-    # if created and not instance.is_active:
-    #     # send an e-mail to the user
-    #     token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
-    #
+    if created and not instance.is_active:
+        # send an e-mail to the user
+
+        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
+        token_key = token.key
+        email = instance.email
+
     #     msg = EmailMultiAlternatives(
     #         # title:
     #         f"Password Reset Token for {instance.email}",
@@ -64,7 +67,7 @@ def new_user_registered_signal(sender: Type[User], instance: User, created: bool
     #         [instance.email]
     #     )
         # msg.send()
-    new_user_registered_signal_task.delay(sender, instance, created, **kwargs)
+        new_user_registered_signal_task.delay(email, token_key)
     # task_id = async_result.id
     # return task_id
 
