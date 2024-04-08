@@ -7,7 +7,6 @@ from django.dispatch import receiver, Signal
 from django_rest_passwordreset.signals import reset_password_token_created
 
 from backend.models import ConfirmEmailToken, User
-
 from .tasks import password_reset_token_created_task, new_user_registered_signal_task, new_order_signal_task
 
 new_user_registered = Signal()
@@ -26,50 +25,25 @@ def password_reset_token_created(sender, instance, reset_password_token, **kwarg
     :param kwargs:
     :return:
     """
-    # send an e-mail to the user
-
-    # msg = EmailMultiAlternatives(
-    #     # title:
-    #     f"Password Reset Token for {reset_password_token.user}",
-    #     # message:
-    #     reset_password_token.key,
-    #     # from:
-    #     settings.EMAIL_HOST_USER,
-    #     # to:
-    #     [reset_password_token.user.email]
-    # )
-    # msg.send()
-    async_result = password_reset_token_created_task.d
-    task_id = async_result.id
-    return task_id
+    # get params for the celery-task
+    reset_password_token_key = reset_password_token.key
+    reset_password_token_user_email = reset_password_token.user.email
+    # call the celery-task
+    password_reset_token_created_task.delay(reset_password_token_key, reset_password_token_user_email)
 
 
 @receiver(post_save, sender=User)
 def new_user_registered_signal(sender: Type[User], instance: User, created: bool, **kwargs):
     """
-     отправляем письмо с подтрердждением почты
+     отправляем письмо с подтверждением почты
     """
     if created and not instance.is_active:
-        # send an e-mail to the user
-
+        # get params for the celery-task
         token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
         token_key = token.key
         email = instance.email
-
-    #     msg = EmailMultiAlternatives(
-    #         # title:
-    #         f"Password Reset Token for {instance.email}",
-    #         # message:
-    #         token.key,
-    #         # from:
-    #         settings.EMAIL_HOST_USER,
-    #         # to:
-    #         [instance.email]
-    #     )
-        # msg.send()
+        # call the celery-task
         new_user_registered_signal_task.delay(email, token_key)
-    # task_id = async_result.id
-    # return task_id
 
 
 @receiver(new_order)
@@ -78,8 +52,11 @@ def new_order_signal(user_id, **kwargs):
     отправяем письмо при изменении статуса заказа
     """
     # send an e-mail to the user
-    # user = User.objects.get(id=user_id)
-    #
+    # get params for the celery-task
+    user = User.objects.get(id=user_id)
+    email = user.email
+    # call the celery-task
+    new_order_signal_task.delay(email)
     # msg = EmailMultiAlternatives(
     #     # title:
     #     f"Обновление статуса заказа",
@@ -91,6 +68,3 @@ def new_order_signal(user_id, **kwargs):
     #     [user.email]
     # )
     # msg.send()
-    async_result = new_order_signal.delay(user_id, **kwargs)
-    task_id = async_result.id
-    return task_id

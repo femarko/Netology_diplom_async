@@ -36,18 +36,25 @@ def update_price_list(url, user_id):
 
 
 @shared_task
-def password_reset_token_created_task(sender, instance, reset_password_token, **kwargs):
-    return password_reset_token_created(sender, instance, reset_password_token, **kwargs)
+def password_reset_token_created_task(reset_password_token_key, reset_password_token_user_email):
+    msg = EmailMultiAlternatives(
+        # title:
+        f"Password Reset Token for {reset_password_token_user_email}",
+        # message:
+        reset_password_token_key,
+        # from:
+        settings.EMAIL_HOST_USER,
+        # to:
+        [reset_password_token_user_email]
+    )
+    msg.send()
 
 
 @shared_task
 def new_user_registered_signal_task(email, token_key):
     """
-     отправляем письмо с подтрердждением почты
+     creating and sending email
     """
-    # if created and not instance.is_active:
-    #     # send an e-mail to the user
-    #     token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
 
     msg = EmailMultiAlternatives(
         # title:
@@ -63,5 +70,14 @@ def new_user_registered_signal_task(email, token_key):
 
 
 @shared_task
-def new_order_signal_task(user_id, **kwargs):
-    return new_order_signal(user_id, **kwargs)
+def new_order_signal_task(email):
+    msg = EmailMultiAlternatives(
+        # title:
+        f"Обновление статуса заказа",
+        # message:
+        'Заказ сформирован',
+        # from:
+        settings.EMAIL_HOST_USER,
+        # to:
+        [email]
+    )
