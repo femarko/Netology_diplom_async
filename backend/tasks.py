@@ -1,7 +1,12 @@
 from celery import shared_task
+from django.core.mail import EmailMultiAlternatives
 from requests import get
 from yaml import load as load_yaml, Loader
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter
+# from backend.emails import password_reset_token_created, new_user_registered_signal, new_order_signal
+from typing import Type
+from backend.models import ConfirmEmailToken, User
+from netology_pd_diplom import settings
 
 
 @shared_task
@@ -28,3 +33,35 @@ def update_price_list(url, user_id):
             ProductParameter.objects.create(product_info_id=product_info.id,
                                             parameter_id=parameter_object.id,
                                             value=value)
+
+
+@shared_task
+def password_reset_token_created_task(sender, instance, reset_password_token, **kwargs):
+    return password_reset_token_created(sender, instance, reset_password_token, **kwargs)
+
+
+@shared_task
+def new_user_registered_signal_task(sender: Type[User], instance: User, created: bool, **kwargs):
+    """
+     отправляем письмо с подтрердждением почты
+    """
+    if created and not instance.is_active:
+        # send an e-mail to the user
+        token, _ = ConfirmEmailToken.objects.get_or_create(user_id=instance.pk)
+
+        msg = EmailMultiAlternatives(
+            # title:
+            f"Password Reset Token for {instance.email}",
+            # message:
+            token.key,
+            # from:
+            settings.EMAIL_HOST_USER,
+            # to:
+            [instance.email]
+        )
+        msg.send()
+
+
+@shared_task
+def new_order_signal_task(user_id, **kwargs):
+    return new_order_signal(user_id, **kwargs)
