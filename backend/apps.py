@@ -9,4 +9,4 @@ class BackendConfig(AppConfig):
         """
         импортируем сигналы
         """
-        from backend import signals
+        # from backend import signals
