@@ -81,3 +81,4 @@ def new_order_signal_task(email):
         # to:
         [email]
     )
+    msg.send()
