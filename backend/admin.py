@@ -5,6 +5,26 @@ from backend.models import User, Shop, Category, Product, ProductInfo, Parameter
     Contact, ConfirmEmailToken
 
 
+class ProductInfoInline(admin.TabularInline):
+    model = ProductInfo
+    extra = 0
+
+
+class ProductInline(admin.TabularInline):
+    model = Product
+    extra = 0
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+
+
+class OrderInline(admin.TabularInline):
+    model = Order
+    extra = 0
+
+
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     """
@@ -20,12 +40,15 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
-    list_display = ('email', 'first_name', 'last_name', 'is_staff')
+    list_display = ("id", 'email', 'first_name', 'last_name', 'is_staff')
+    list_filter = ("type",)
 
 
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
     list_display = ("name", "url", "user", "state")
+    list_filter = ("state",)
+    inlines = (ProductInfoInline,)
 
 
 @admin.register(Category)
@@ -36,11 +59,13 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ("name",)
+    inlines = (ProductInfoInline,)
 
 
 @admin.register(ProductInfo)
 class ProductInfoAdmin(admin.ModelAdmin):
     list_display = ("model", "external_id", "quantity", "price", "price_rrc")
+    inlines = (OrderItemInline,)
 
 
 @admin.register(Parameter)
@@ -56,11 +81,13 @@ class ProductParameterAdmin(admin.ModelAdmin):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ("user", "dt", "state", "contact")
+    inlines = (OrderItemInline,)
 
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
     list_display = ("id", "order", "product_info", "quantity")
+    # inlines = (ProductInfoInline,)
 
 
 @admin.register(Contact)
