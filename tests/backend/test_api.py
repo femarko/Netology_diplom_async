@@ -39,13 +39,14 @@ def test_register_account(client: APIClient, user_registration_data: dict):
 
 @pytest.mark.django_db
 def test_register_with_poor_data(user_registration_poor_data: list, client: APIClient):
-    result_dict = {}
+    result_list = []
     for data in user_registration_poor_data:
         response = client.post(path='/api/v1/user/register', data=data)
-        result_dict.update({"status_code": response.status_code, "json": response.json()})
-    assert result_dict == {
-        "status_code": 200,
-        "json": {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
-    }
+        result_list.append({"status_code": response.status_code, "json": response.json()})
+    for item in result_list:
+        assert item == {
+            "status_code": 200,
+            "json": {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+        }
 
 
