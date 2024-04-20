@@ -30,23 +30,25 @@ def user_registration_poor_data(user_registration_data: dict) -> list:
     return poor_data_list
 
 
-@pytest.mark.django_db
-def test_register_account(client: APIClient, user_registration_data: dict):
-    response = client.post(path='/api/v1/user/register', data=user_registration_data)
-    assert response.status_code == 200
-    assert response.json() == {'Status': True}
+class TestRegisterAccount:
+    registration_url = '/api/v1/user/register'
 
+    @pytest.mark.django_db
+    def test_register_account(self, client: APIClient, user_registration_data: dict):
+        response = client.post(path=self.registration_url, data=user_registration_data)
+        assert response.status_code == 200
+        assert response.json() == {'Status': True}
 
-@pytest.mark.django_db
-def test_register_with_poor_data(user_registration_poor_data: list, client: APIClient):
-    result_list = []
-    for data in user_registration_poor_data:
-        response = client.post(path='/api/v1/user/register', data=data)
-        result_list.append({"status_code": response.status_code, "json": response.json()})
-    for item in result_list:
-        assert item == {
-            "status_code": 200,
-            "json": {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
-        }
+    @pytest.mark.django_db
+    def test_register_with_poor_data(self, user_registration_poor_data: list, client: APIClient):
+        result_list = []
+        for data in user_registration_poor_data:
+            response = client.post(path=self.registration_url, data=data)
+            result_list.append({"status_code": response.status_code, "json": response.json()})
+        for item in result_list:
+            assert item == {
+                "status_code": 200,
+                "json": {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
+            }
 
 
