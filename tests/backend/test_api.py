@@ -52,3 +52,17 @@ class TestRegisterAccount:
             }
 
 
+class TestLoginAccount:
+    login_url = '/api/v1/user/login'
+
+    @pytest.mark.django_db
+    def test_login_with_correct_userdata(self, client, user_registration_data):
+        data = {
+            "email": user_registration_data.get("email"),
+            "password": user_registration_data.get("password")
+        }
+        response = client.post(path=self.login_url, data=data)
+        assert response.status_code == 200
+        assert response.json().get("Status") == True
+        assert response.json().get("Token") is not None
+        assert len(response.json().get("Token")) > 1

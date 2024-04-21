@@ -58,7 +58,7 @@ class RegisterAccount(APIView):
                 user_serializer = UserSerializer(data=request.data)
                 if user_serializer.is_valid():
                     # сохраняем пользователя
-                    user = user_serializer.save()
+                    user = user_serializer.save(is_active=True) # is_active=True added by femarko
                     user.set_password(request.data['password'])
                     user.save()
                     return JsonResponse({'Status': True})
