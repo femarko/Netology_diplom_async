@@ -1,4 +1,4 @@
-import pytest, copy
+import pytest, copy, pytest_ordering
 from rest_framework.test import APIClient
 
 
@@ -21,7 +21,7 @@ def user_registration_data() -> dict:
 
 
 @pytest.fixture
-def user_registration_poor_data(user_registration_data: dict) -> list:
+def user_registration_poor_data(user_registration_data: dict) -> list[dict[str, str]]:
     poor_data_list = []
     for key in user_registration_data.keys():
         temp_dict = copy.deepcopy(user_registration_data)
@@ -30,17 +30,13 @@ def user_registration_poor_data(user_registration_data: dict) -> list:
     return poor_data_list
 
 
+@pytest.mark.run('first')
 class TestRegisterAccount:
+
     registration_url = '/api/v1/user/register'
 
     @pytest.mark.django_db
-    def test_register_account(self, client: APIClient, user_registration_data: dict):
-        response = client.post(path=self.registration_url, data=user_registration_data)
-        assert response.status_code == 200
-        assert response.json() == {'Status': True}
-
-    @pytest.mark.django_db
-    def test_register_with_poor_data(self, user_registration_poor_data: list, client: APIClient):
+    def test_register_with_poor_data(self, user_registration_poor_data: list[dict[str, str]], client: APIClient):
         result_list = []
         for data in user_registration_poor_data:
             response = client.post(path=self.registration_url, data=data)
@@ -51,18 +47,25 @@ class TestRegisterAccount:
                 "json": {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
             }
 
+    @pytest.mark.django_db
+    def test_register_account(self, client: APIClient, user_registration_data: dict):
+        response = client.post(path=self.registration_url, data=user_registration_data)
+        assert response.status_code == 200
+        assert response.json() == {'Status': True}
 
+
+@pytest.mark.run('last')
 class TestLoginAccount:
     login_url = '/api/v1/user/login'
 
     @pytest.mark.django_db
-    def test_login_with_correct_userdata(self, client, user_registration_data):
+    def test_login_with_correct_userdata(self, client, user_registration_data: dict):
         data = {
-            "email": user_registration_data.get("email"),
-            "password": user_registration_data.get("password")
+            "email": "t_e_s_t@internet.ru",
+            "password": "testpassword"
         }
         response = client.post(path=self.login_url, data=data)
         assert response.status_code == 200
-        assert response.json().get("Status") == True
+        assert response.json().get("Status") is True
         assert response.json().get("Token") is not None
         assert len(response.json().get("Token")) > 1
