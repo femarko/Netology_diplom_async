@@ -12,6 +12,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from ujson import loads as load_json
+
 from celery.result import AsyncResult
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
@@ -58,7 +59,7 @@ class RegisterAccount(APIView):
                 user_serializer = UserSerializer(data=request.data)
                 if user_serializer.is_valid():
                     # сохраняем пользователя
-                    user = user_serializer.save(is_active=True) # is_active=True added by femarko
+                    user = user_serializer.save()
                     user.set_password(request.data['password'])
                     user.save()
                     return JsonResponse({'Status': True})
