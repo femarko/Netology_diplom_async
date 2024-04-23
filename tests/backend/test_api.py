@@ -82,10 +82,9 @@ class TestRegisterAccount:
         """
         Testing of confirm_email_token creation for a new user
         """
-        token = ConfirmEmailToken.objects.filter(user_id=user.pk).key
-        assert token is not None
-        assert token != ""
+        token = ConfirmEmailToken.objects.filter(user_id=user.pk)[0].key
         assert type(token) is str
+        assert token != ""
         assert len(token) > 1
 
 
