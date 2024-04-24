@@ -1,7 +1,7 @@
 import pytest, copy, pytest_ordering
 from rest_framework.test import APIClient
 from dataclasses import dataclass
-from typing import TypeAlias, NewType
+from typing import TypeAlias, NewType, Type
 
 from backend.models import User, ConfirmEmailToken
 
@@ -47,14 +47,18 @@ def user(user_registration_data: dict) -> User:
     return User.objects.create_user(email=email, **user_registration_data)
 
 
-# @pytest.mark.run('first')
+@pytest.fixture
+def confirm_email_token(user: User) -> str:
+    return ConfirmEmailToken.objects.filter(user_id=user.pk)[0].key
+
+
+@pytest.mark.django_db
 class TestRegisterAccount:
     endpoint_url = "user/register"
 
     def endpoint_path(self, base_url) -> str:
         return base_url + self.endpoint_url
 
-    @pytest.mark.django_db
     def test_register_with_poor_data(self,
                                      user_registration_poor_data: list[dict[ str, str]],
                                      client: APIClient, base_url) -> None:
@@ -68,24 +72,44 @@ class TestRegisterAccount:
                 "json": {'Status': False, 'Errors': 'Не указаны все необходимые аргументы'}
             }
 
-    @pytest.mark.django_db
     def test_register_account(self, client: APIClient, user_registration_data: dict, base_url) -> None:
         """
-        Testing of API endpoint 'user/register': input data and respective response
+        Testing of API endpoint 'user/register': user data input and the view-function's response
         """
         response = client.post(path=self.endpoint_path(base_url), data=user_registration_data)
         assert response.status_code == 200
         assert response.json() == {'Status': True}
 
-    @pytest.mark.django_db
-    def test_confirm_email_token_creation(self, client: APIClient, user: User) -> None:
+    def test_confirm_email_token_creation(self, client: APIClient, confirm_email_token: str) -> None:
         """
-        Testing of confirm_email_token creation for a new user
+        Testing of confirm_email_token creation for a new user: is there the token in the DB?
         """
-        token = ConfirmEmailToken.objects.filter(user_id=user.pk)[0].key
+        token = confirm_email_token
         assert type(token) is str
         assert token != ""
         assert len(token) > 1
+
+
+@pytest.mark.django_db
+class TestConfirmAccount:
+    endpoint_url = 'user/register/confirm'
+
+    @staticmethod
+    def _data(fixture_user: User, fixture_confirm_email_token: str) -> dict:
+        return {"email": fixture_user.email, "token": fixture_confirm_email_token}
+
+    def _endpoint_path(self, fixture_base_url: str) -> str:
+        return fixture_base_url + self.endpoint_url
+
+    def test_confirm_account(self, client: APIClient, base_url, user: User, confirm_email_token: str):
+        response = client.post(path=self._endpoint_path(base_url), data=self._data(user, confirm_email_token))
+        assert response.status_code == 200
+        assert response.json() == {'Status': True}
+        assert user.is_authenticated is True
+        # assert user.is_active is True
+
+    # def test_user_is_active(self, user: User):
+    #     assert user.is_active is True
 
 
 # @pytest.mark.run('last')
