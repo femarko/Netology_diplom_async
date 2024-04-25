@@ -56,7 +56,7 @@ def confirm_email_token(user: User) -> str:
 class TestRegisterAccount:
     endpoint_url = "user/register"
 
-    def endpoint_path(self, base_url) -> str:
+    def _endpoint_path(self, base_url) -> str:
         return base_url + self.endpoint_url
 
     def test_register_with_poor_data(self,
@@ -64,7 +64,7 @@ class TestRegisterAccount:
                                      client: APIClient, base_url) -> None:
         result_list = []
         for data in user_registration_poor_data:
-            response = client.post(path=self.endpoint_path(base_url), data=data)
+            response = client.post(path=self._endpoint_path(base_url), data=data)
             result_list.append({"status_code": response.status_code, "json": response.json()})
         for item in result_list:
             assert item == {
@@ -76,7 +76,7 @@ class TestRegisterAccount:
         """
         Testing of API endpoint 'user/register': user data input and the view-function's response
         """
-        response = client.post(path=self.endpoint_path(base_url), data=user_registration_data)
+        response = client.post(path=self._endpoint_path(base_url), data=user_registration_data)
         assert response.status_code == 200
         assert response.json() == {'Status': True}
 
