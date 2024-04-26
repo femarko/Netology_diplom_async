@@ -6,7 +6,6 @@ from typing import TypeAlias, NewType, Type
 from backend.models import User, ConfirmEmailToken
 
 
-
 @pytest.fixture
 def client() -> APIClient:
     return APIClient()
@@ -40,16 +39,18 @@ def user_registration_poor_data(user_registration_data: dict[str, str]) -> list[
     return poor_data_list
 
 
-@pytest.fixture
-def user(user_registration_data: dict) -> User:
+@pytest.fixture(scope="class")
+def user(user_registration_data: dict) -> tuple[User, str]:
     email = user_registration_data.get("email")
     user_registration_data.pop("email")
-    return User.objects.create_user(email=email, **user_registration_data)
+    user = User.objects.create_user(email=email, **user_registration_data)
+    confirm_email_token = ConfirmEmailToken.objects.filter(user_id=user.pk).first().key
+    return user, confirm_email_token
 
 
 @pytest.fixture
-def confirm_email_token(user: User) -> str:
-    return ConfirmEmailToken.objects.filter(user_id=user.pk)[0].key
+# def confirm_email_token(user: User) -> str:
+#     return ConfirmEmailToken.objects.filter(user_id=user.pk).first().key
 
 
 @pytest.mark.django_db
@@ -80,14 +81,14 @@ class TestRegisterAccount:
         assert response.status_code == 200
         assert response.json() == {'Status': True}
 
-    def test_confirm_email_token_creation(self, client: APIClient, confirm_email_token: str) -> None:
-        """
-        Testing of confirm_email_token creation for a new user: is there the token in the DB?
-        """
-        token = confirm_email_token
-        assert type(token) is str
-        assert token != ""
-        assert len(token) > 1
+    # def test_confirm_email_token_creation(self, client: APIClient, confirm_email_token: str) -> None:
+    #     """
+    #     Testing of confirm_email_token creation for a new user: is there the token in the DB?
+    #     """
+    #     token = confirm_email_token
+    #     assert type(token) is str
+    #     assert token != ""
+    #     assert len(token) > 1
 
 
 @pytest.mark.django_db
@@ -95,18 +96,20 @@ class TestConfirmAccount:
     endpoint_url = 'user/register/confirm'
 
     @staticmethod
-    def _data(fixture_user: User, fixture_confirm_email_token: str) -> dict:
-        return {"email": fixture_user.email, "token": fixture_confirm_email_token}
+    def _data(user) -> dict:
+        user_obj, confirm_email_token = user
+        return {"email": user_obj.email, "token": confirm_email_token}
 
     def _endpoint_path(self, fixture_base_url: str) -> str:
         return fixture_base_url + self.endpoint_url
 
-    def test_confirm_account(self, client: APIClient, base_url, user: User, confirm_email_token: str):
-        response = client.post(path=self._endpoint_path(base_url), data=self._data(user, confirm_email_token))
+    def test_confirm_account(self, client: APIClient, base_url):
+        user_obj, confirm_email_token = self._data(user)
+        response = client.post(path=self._endpoint_path(base_url), data=self._data(user))
         assert response.status_code == 200
         assert response.json() == {'Status': True}
-        assert user.is_authenticated is True
-        # assert user.is_active is True
+        assert user_obj.is_authenticated is True
+        assert user_obj.is_active is True
 
     # def test_user_is_active(self, user: User):
     #     assert user.is_active is True
