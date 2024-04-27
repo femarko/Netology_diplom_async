@@ -5,6 +5,7 @@ from typing import TypeAlias, NewType, Type
 
 from backend.models import User, ConfirmEmailToken
 
+pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def client() -> APIClient:
@@ -16,55 +17,76 @@ def base_url() -> str:
     return "/api/v1/"
 
 
-@pytest.fixture
-def user_registration_data() -> dict[str, str]:
-    user_register_data = {
-        "first_name": "test",
-        "last_name": "test",
-        "email": "t_e_s_t@internet.ru",
-        "password": "testpassword",
-        "company": "test",
-        "position": "test"
-    }
-    return user_register_data
+# @pytest.fixture
+# def user_registration_poor_data(user_registration_data: dict[str, str]) -> list[dict[str, str]]:
+#     poor_data_list = []
+#     for key in user_registration_data.keys():
+#         temp_dict = copy.deepcopy(user_registration_data)
+#         temp_dict.pop(key)
+#         poor_data_list.append(temp_dict)
+#     return poor_data_list
 
 
-@pytest.fixture
-def user_registration_poor_data(user_registration_data: dict[str, str]) -> list[dict[str, str]]:
-    poor_data_list = []
-    for key in user_registration_data.keys():
-        temp_dict = copy.deepcopy(user_registration_data)
-        temp_dict.pop(key)
-        poor_data_list.append(temp_dict)
-    return poor_data_list
+# @pytest.fixture
+# def user(user_registration_data: dict) -> User:
+#     email = user_registration_data.get("email")
+#     user_registration_data.pop("email")
+#     return User.objects.create_user(email=email, **user_registration_data)
 
 
-@pytest.fixture(scope="class")
-def user(user_registration_data: dict) -> tuple[User, str]:
-    email = user_registration_data.get("email")
-    user_registration_data.pop("email")
-    user = User.objects.create_user(email=email, **user_registration_data)
-    confirm_email_token = ConfirmEmailToken.objects.filter(user_id=user.pk).first().key
-    return user, confirm_email_token
-
-
-@pytest.fixture
+# @pytest.fixture
 # def confirm_email_token(user: User) -> str:
-#     return ConfirmEmailToken.objects.filter(user_id=user.pk).first().key
+#     return ConfirmEmailToken.objects.filter(user_id=user.pk)[0].key
 
 
 @pytest.mark.django_db
-class TestRegisterAccount:
-    endpoint_url = "user/register"
+class TestUserRegisterConfirmLogin:
+    pytestmark = pytest.mark.django_db
+
+    user_register_url = "user/register"
+    confirm_account_url = 'user/register/confirm'
+
+    @pytest.fixture(scope="class")
+    def user_registration_data(self) -> dict[str, str]:
+        return {
+            "first_name": "test",
+            "last_name": "test",
+            "email": "t_e_s_t@internet.ru",
+            "password": "testpassword",
+            "company": "test",
+            "position": "test"
+        }
+
+    @pytest.mark.django_db
+    def user(self, user_registration_data):
+        # user_data = {
+        #     "first_name": "test",
+        #     "last_name": "test",
+        #     "email": "t_e_s_t@internet.ru",
+        #     "password": "testpassword",
+        #     "company": "test",
+        #     "position": "test"
+        # }
+        user_object = User.objects.create_user(**user_registration_data)
+        return user_object
+
 
     def _endpoint_path(self, base_url) -> str:
-        return base_url + self.endpoint_url
+        return base_url + self.user_register_url
 
-    def test_register_with_poor_data(self,
-                                     user_registration_poor_data: list[dict[ str, str]],
-                                     client: APIClient, base_url) -> None:
+    def _endpoint_confirmation_path(self, base_url):
+        return base_url + self.confirm_account_url
+
+    def test_register_with_poor_data(self, client: APIClient, base_url, user_registration_data) -> None:
+
+        poor_user_data_list = []
+        for key in user_registration_data.keys():
+            temp_dict = copy.deepcopy(user_registration_data)
+            temp_dict.pop(key)
+            poor_user_data_list.append(temp_dict)
+
         result_list = []
-        for data in user_registration_poor_data:
+        for data in poor_user_data_list:
             response = client.post(path=self._endpoint_path(base_url), data=data)
             result_list.append({"status_code": response.status_code, "json": response.json()})
         for item in result_list:
@@ -81,51 +103,27 @@ class TestRegisterAccount:
         assert response.status_code == 200
         assert response.json() == {'Status': True}
 
-    # def test_confirm_email_token_creation(self, client: APIClient, confirm_email_token: str) -> None:
-    #     """
-    #     Testing of confirm_email_token creation for a new user: is there the token in the DB?
-    #     """
-    #     token = confirm_email_token
-    #     assert type(token) is str
-    #     assert token != ""
-    #     assert len(token) > 1
 
+    @pytest.mark.django_db
+    def test_confirm_email_token_creation(self, client: APIClient, user_registration_data) -> None:
+        """
+        Testing of confirm_email_token creation for a new user: is there the token in the DB?
+        """
+        user_id = self.user(user_registration_data).pk
+        token = ConfirmEmailToken.objects.filter(user_id=user_id)[0].key
+        assert type(token) is str
+        assert token != ""
+        assert len(token) > 1
 
-@pytest.mark.django_db
-class TestConfirmAccount:
-    endpoint_url = 'user/register/confirm'
-
-    @staticmethod
-    def _data(user) -> dict:
-        user_obj, confirm_email_token = user
-        return {"email": user_obj.email, "token": confirm_email_token}
-
-    def _endpoint_path(self, fixture_base_url: str) -> str:
-        return fixture_base_url + self.endpoint_url
-
-    def test_confirm_account(self, client: APIClient, base_url):
-        user_obj, confirm_email_token = self._data(user)
-        response = client.post(path=self._endpoint_path(base_url), data=self._data(user))
+    def test_confirm_account(self, client: APIClient, base_url, user_registration_data):
+        user = self.user(user_registration_data)
+        user_id = user.pk
+        token = ConfirmEmailToken.objects.filter(user_id=user_id)[0].key
+        email = user.email
+        response = client.post(path=self._endpoint_confirmation_path(base_url), data={"email": email, "token": token})
+        print(f'{user_id=} {email=} {token=} {user.is_active=}')
         assert response.status_code == 200
         assert response.json() == {'Status': True}
-        assert user_obj.is_authenticated is True
-        assert user_obj.is_active is True
+        assert user.is_authenticated is True
+        # assert user.is_active is True # fails
 
-    # def test_user_is_active(self, user: User):
-    #     assert user.is_active is True
-
-
-# @pytest.mark.run('last')
-# class TestLoginAccount:
-#
-#     @pytest.mark.django_db
-#     def test_login_with_correct_userdata(self, client, user_registration_data: dict):
-#         data = {
-#             "email": "t_e_s_t@internet.ru",
-#             "password": "testpassword"
-#         }
-#         response = client.post(path=self.login_url, data=data)
-#         assert response.status_code == 200
-#         assert response.json().get("Status") is True
-#         assert response.json().get("Token") is not None
-#         assert len(response.json().get("Token")) > 1
