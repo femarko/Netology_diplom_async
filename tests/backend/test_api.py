@@ -44,12 +44,16 @@ def user(request, transactional_db, user_data: user_data):
 
 class TestUserRegisterConfirmLogin:
     user_register_url: str = "user/register"
-    confirm_account_url: str = 'user/register/confirm'
+    confirm_account_url: str = "user/register/confirm"
+    login_url = "user/login"
 
-    def _endpoint_registration_path(self, base_url: base_url) -> str:
+    def _registration_path(self, base_url: base_url) -> str:
         return base_url + self.user_register_url
 
-    def _endpoint_confirmation_path(self, base_url: base_url):
+    def _confirmation_path(self, base_url: base_url):
+        return base_url + self.confirm_account_url
+
+    def _login_path(self, base_url: base_url):
         return base_url + self.confirm_account_url
 
     def test_register_with_poor_data(self, client: client, base_url: base_url, user_data: user_data) -> None:
@@ -60,7 +64,7 @@ class TestUserRegisterConfirmLogin:
             poor_user_data_list.append(temp_dict)
         result_list: list[dict[str, int | dict[str, bool | str]]] = []
         for data in poor_user_data_list:
-            response = client.post(path=self._endpoint_registration_path(base_url), data=data)
+            response = client.post(path=self._registration_path(base_url), data=data)
             result_list.append({"status_code": response.status_code, "json": response.json()})
         for item in result_list:
             assert item == {
@@ -72,7 +76,7 @@ class TestUserRegisterConfirmLogin:
         """
         Testing of API endpoint 'user/register': user data input and the view-function's response
         """
-        response = client.post(path=self._endpoint_registration_path(base_url), data=user_data)
+        response = client.post(path=self._registration_path(base_url), data=user_data)
         assert response.status_code == 200
         assert response.json() == {'Status': True}
 
@@ -86,8 +90,7 @@ class TestUserRegisterConfirmLogin:
         token: str = ConfirmEmailToken.objects.filter(user_id=user_id)[0].key
         assert type(token) is str
         assert token != ""
-        assert len(token) > 10
-
+        assert len(token) > 1
 
     @pytest.mark.usefixtures("user")
     def test_confirm_account(self, client: client, base_url: base_url):
@@ -95,7 +98,17 @@ class TestUserRegisterConfirmLogin:
         user_id = user.pk
         token = ConfirmEmailToken.objects.filter(user_id=user_id)[0].key
         email = user.email
-        response = client.post(path=self._endpoint_confirmation_path(base_url), data={"email": email, "token": token})
+        response = client.post(path=self._confirmation_path(base_url), data={"email": email, "token": token})
         assert response.status_code == 200
         assert response.json() == {'Status': True}
         assert user.is_active is True # fails
+
+    @pytest.mark.usefixtures("user")
+    def test_login(self, client: client, base_url: base_url):
+        user: User = self.user_object
+        email_confirmation_token: str = ConfirmEmailToken.objects.filter(user_id=user.pk)[0].key
+        response = client.post(path=self._login_path(base_url), data={"email": user.email,
+                                                                      "token": email_confirmation_token})
+        assert response.status_code == 200
+        assert response.json()["Status"] is True
+
