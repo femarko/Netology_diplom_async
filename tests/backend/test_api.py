@@ -135,9 +135,9 @@ class TestUserRegisterConfirmLogin:
     @pytest.mark.usefixtures("user")
     def test_login(self, client: client, path: Endpoint_path):
         user: User = self.user_object
-        token = ConfirmEmailToken.objects.filter(user_id=user.pk).first().key
+        email_confirmation_token = ConfirmEmailToken.objects.filter(user_id=user.pk)[0].key
         response: JsonResponse = client.post(path=path.login,
-                                             data={"email": user.email, "token": self.email_confirmation_token(user)})
+                                             data={"email": user.email, "token": email_confirmation_token})
         assert response.status_code == 200
         assert user.is_authenticated
         # assert user.is_active
