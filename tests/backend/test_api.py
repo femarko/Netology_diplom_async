@@ -58,9 +58,6 @@ def user(request, transactional_db, user_data: user_data, client: client, path: 
 
 
 class TestUserRegisterConfirmLogin:
-    class Email_token(NamedTuple):
-        token: str
-        user: User
 
     def test_register_account_with_poor_data(self, client: client, path: Endpoint_path, user_data: user_data) -> None:
         poor_user_data_list: list[dict[str, str]] = []
@@ -127,15 +124,18 @@ class TestUserRegisterConfirmLogin:
         assert auth_token != ""
         # assert user.is_active is True # fails
 
-    # @pytest.mark.usefixtures("user")
-    # def test_account_detailes(self, client: client, path: Endpoint_path):
-    #     user: User = self.user_object
-    #     print(f'{user.pk = }')
-    #     # client.force_authenticate(user=user, token=self.email_confirmation_token(user))
-    #     login_response: JsonResponse = client.post(path=path.login,
-    #                                          data={"email": user.email, "token": self.email_confirmation_token(user)})
-    #     response: JsonResponse = client.get(path=path.user_details,
-    #                                         data={"email": user.email, "token": self.email_confirmation_token(user)})
-    #
-    #     assert user.is_authenticated is True
-    #     assert response.status_code == 404
+
+class TestAccountDetailes:
+
+    @pytest.mark.usefixtures("user")
+    def test_account_detailes(self, client: client, path: Endpoint_path):
+        user: User = self.user_object
+        print(f'{user.pk = }')
+        # client.force_authenticate(user=user, token=self.email_confirmation_token(user))
+        login_response: JsonResponse = client.post(path=path.login,
+                                             data={"email": user.email, "token": self.email_confirmation_token(user)})
+        response: JsonResponse = client.get(path=path.user_details,
+                                            data={"email": user.email, "token": self.email_confirmation_token(user)})
+
+        assert user.is_authenticated is True
+        assert response.status_code == 404
