@@ -1,4 +1,6 @@
-import pytest, copy
+import pytest, copy, json
+from django.http import QueryDict
+from rest_framework.response import Response
 from rest_framework.test import APIClient
 from django.http.response import JsonResponse
 from dataclasses import dataclass
@@ -128,14 +130,13 @@ class TestUserRegisterConfirmLogin:
 class TestAccountDetailes:
 
     @pytest.mark.usefixtures("user")
-    def test_account_detailes(self, client: client, path: Endpoint_path):
-        user: User = self.user_object
-        print(f'{user.pk = }')
-        # client.force_authenticate(user=user, token=self.email_confirmation_token(user))
-        login_response: JsonResponse = client.post(path=path.login,
-                                             data={"email": user.email, "token": self.email_confirmation_token(user)})
-        response: JsonResponse = client.get(path=path.user_details,
-                                            data={"email": user.email, "token": self.email_confirmation_token(user)})
-
-        assert user.is_authenticated is True
-        assert response.status_code == 404
+    def test_account_detailes(self, client: client, path: Endpoint_path, user_data: user_data):
+        user: User = self.user
+        client.force_authenticate(user=user)
+        response: Response = client.get(path=path.user_details)
+        response_dict = json.loads(response.content)
+        user_data_dict = user_data
+        user_data_dict.pop("password")
+        assert response.status_code == 200
+        for key in user_data_dict:
+            assert user_data[key] == response_dict[key]
