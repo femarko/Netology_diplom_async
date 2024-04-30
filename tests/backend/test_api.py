@@ -126,7 +126,7 @@ class TestUserRegisterConfirmLogin:
         # assert user.is_active is True # fails
 
 
-class TestAccountDetailesCategoryView:
+class TestAccountDetailes:
 
     @pytest.mark.usefixtures("user")
     def test_get_account_detailes(self, client: client, path: Endpoint_path, user_data: user_data) -> None:
