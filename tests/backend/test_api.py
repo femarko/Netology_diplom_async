@@ -32,11 +32,6 @@ def client() -> APIClient:
 
 
 @pytest.fixture
-def base_url() -> str:
-    return "/api/v1/"
-
-
-@pytest.fixture
 def path() -> Endpoint_path:
     base_url = "/api/v1/"
     return Endpoint_path(base_url + "user/register",
