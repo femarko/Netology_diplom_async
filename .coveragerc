@@ -1,0 +1,2 @@
+[run]
+omit=.venv/*,data/*,tests/*,netology_pd_diplom/*,.pytest_cache/*,backend/migrations/*,manage.py,backend/tests.py
