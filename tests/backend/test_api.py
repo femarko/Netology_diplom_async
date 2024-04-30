@@ -11,9 +11,8 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 @dataclass
 class Fixture:
-    client: APIClient
-    base_url: str
     Endpoint_path: NamedTuple
+    client: APIClient
     path: str
     user_data: dict[str, str]
     user: User
