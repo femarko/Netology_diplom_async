@@ -53,7 +53,7 @@ def user_data() -> dict[str, str]:
 
 
 @pytest.fixture
-def user(request, transactional_db, user_data: user_data, client: client, path: Endpoint_path) -> User:
+def user(request, transactional_db, user_data: user_data, client: client, path: Endpoint_path) -> None:
     client.post(path=path.user_register, data=user_data)
     request.cls.user = User.objects.filter(email=user_data["email"]).first()
 
@@ -77,25 +77,23 @@ class TestUserRegisterConfirmLogin:
             }
 
     def test_register_account(self, user_data: user_data, path: Endpoint_path, client: client) -> None:
-        response = client.post(path=path.user_register, data=user_data)
-        user = User.objects.filter(email=user_data["email"]).first()
-        print(f'{User.objects.filter(email=user_data["email"]).first().pk}')
+        response: JsonResponse = client.post(path=path.user_register, data=user_data)
+        user: User = User.objects.filter(email=user_data["email"]).first()
         assert response.status_code == 200
         assert response.json() == {'Status': True}
         assert isinstance(user, User)
 
     @pytest.mark.usefixtures("user")
-    def test_emailtoken_creation(self, client: client, user_data: user_data,
-                                 path: Endpoint_path) -> None:
-        user = self.user
-        user_id = user.pk
-        confirm_email_token_instance = ConfirmEmailToken.objects.filter(user_id=user_id).first()
-        print(f'{confirm_email_token_instance = }')
-        token = confirm_email_token_instance.key
+    def test_emailtoken_creation(self, client: client, user_data: user_data, path: Endpoint_path) -> None:
+        user: User = self.user
+        user_id: int = user.pk
+        confirm_email_token_instance: ConfirmEmailToken = ConfirmEmailToken.objects.filter(user_id=user_id).first()
+        token: str = confirm_email_token_instance.key
         assert isinstance(user, User)
         assert isinstance(confirm_email_token_instance, ConfirmEmailToken)
         assert isinstance(token, str)
         assert len(token) > 0
+        assert token != ""
 
     @pytest.mark.usefixtures("user")
     def test_confirm_account(self, client: client, path: Endpoint_path) -> None:
@@ -104,26 +102,30 @@ class TestUserRegisterConfirmLogin:
         email_token: str = confirm_email_token_instance.key
         response: JsonResponse = client.post(path=path.confirm_account,
                                              data={"email": user.email, "token": email_token})
+        user_confirmed: User = User.objects.filter(email=user.email).first()
         assert isinstance(confirm_email_token_instance, ConfirmEmailToken)
         assert isinstance(email_token, str)
         assert response.status_code == 200
-        assert response.json() == {'Status': True}  # passes
-        # assert user.is_active is True  # fails
+        assert response.json() == {'Status': True}
+        assert user_confirmed.is_active is True
 
     @pytest.mark.usefixtures("user")
     def test_login(self, client: client, path: Endpoint_path, user_data: user_data) -> None:
         user: User = self.user
-        email_token = ConfirmEmailToken.objects.filter(user_id=user.pk).first().key
+        email_token: str = ConfirmEmailToken.objects.filter(user_id=user.pk).first().key
+        # account confirmation:
         client.post(path=path.confirm_account, data={"email": user.email, "token": email_token})
-        response_login = client.post(path=path.login, data={"email": user.email, "password": user_data["password"]})
-        auth_token = response_login.json()["Token"]
+        response_login: JsonResponse = client.post(path=path.login,
+                                                   data={"email": user.email, "password": user_data["password"]})
+        auth_token: str = response_login.json()["Token"]
+        user_logged_in: User = User.objects.filter(email=user.email).first()
         assert response_login.status_code == 200
         assert user.is_authenticated
-        assert response_login.json()["Status"] is True  # passes
+        assert response_login.json()["Status"] is True
         assert isinstance(auth_token, str)
         assert len(auth_token) > 0
         assert auth_token != ""
-        # assert user.is_active is True # fails
+        assert user_logged_in.is_active is True
 
 
 class TestAccountDetailes:
