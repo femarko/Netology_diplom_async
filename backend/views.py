@@ -25,6 +25,8 @@ from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
 
 
+@extend_schema(tags=["Users"])
+@extend_schema_view(post=extend_schema(summary="Registration of a new account"))
 class RegisterAccount(APIView):
     """
     Для регистрации покупателей
@@ -70,7 +72,8 @@ class RegisterAccount(APIView):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-
+@extend_schema(tags=["Users"])
+@extend_schema_view(post=extend_schema(summary="Account confirmation"))
 class ConfirmAccount(APIView):
     """
     Класс для подтверждения почтового адреса
@@ -102,7 +105,8 @@ class ConfirmAccount(APIView):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-
+@extend_schema(tags=["Users"])
+@extend_schema_view(get=extend_schema(summary="Retrieve user data") ,post=extend_schema(summary="Update user data"))
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -169,7 +173,8 @@ class AccountDetails(APIView):
         else:
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
 
-
+@extend_schema(tags=["Users"])
+@extend_schema_view(post=extend_schema(summary="Login"))
 class LoginAccount(APIView):
     """
     Класс для авторизации пользователей
@@ -200,6 +205,8 @@ class LoginAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(tags=["Products"])
+@extend_schema_view(get=extend_schema(summary="Retrieve categories"))
 class CategoryView(ListAPIView):
     """
     Класс для просмотра категорий
@@ -207,7 +214,8 @@ class CategoryView(ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
-
+@extend_schema(tags=["Shops"])
+@extend_schema_view(get=extend_schema(summary="Retrieve shops"))
 class ShopView(ListAPIView):
     """
     Класс для просмотра списка магазинов
@@ -215,7 +223,8 @@ class ShopView(ListAPIView):
     queryset = Shop.objects.filter(state=True)
     serializer_class = ShopSerializer
 
-
+@extend_schema(tags=["Products"])
+@extend_schema_view(get=extend_schema(summary="Retrieve the product information based on the specified filters"))
 class ProductInfoView(APIView):
     """
         A class for searching products.
@@ -257,8 +266,12 @@ class ProductInfoView(APIView):
 
         return Response(serializer.data)
 
-@extend_schema_view(get=extend_schema(summary="Decorating the class: param=summary",
-                                      description="Decorating the class: param=description"))
+@extend_schema(tags=["Shopping"])
+@extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket"),
+                    post=extend_schema(summary="Add an item to the user's basket"),
+                    put=extend_schema(summary="Update the quantity of an item in the user's basket"),
+                    delete=extend_schema(summary="Remove an item from the user's basket")
+                    )
 class BasketView(APIView):
     """
     A class for managing the user's shopping basket.
@@ -400,6 +413,10 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(tags=["Partners"])
+@extend_schema_view(get=extend_schema(summary="Returns status of the celery task"),
+                    post=extend_schema(summary="Update the partner information")
+                    )
 class PartnerUpdate(APIView):
     """
     A class for updating partner information.
@@ -451,6 +468,10 @@ class PartnerUpdate(APIView):
         return JsonResponse({'task_status': task.status})
 
 
+@extend_schema(tags=["Partners"])
+@extend_schema_view(get=extend_schema(summary="Retrieve the state of the partner"),
+                    post=extend_schema(summary="Retrieve the state of the partner")
+                    )
 class PartnerState(APIView):
     """
        A class for managing partner state.
@@ -510,6 +531,8 @@ class PartnerState(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(tags=["Partners"])
+@extend_schema_view(get=extend_schema(summary="Retrieve the orders associated with the authenticated partner"))
 class PartnerOrders(APIView):
     """
     Класс для получения заказов поставщиками
@@ -545,7 +568,11 @@ class PartnerOrders(APIView):
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
 
-
+@extend_schema(tags=["Users"])
+@extend_schema_view(get=extend_schema(summary="Retrieve the contact information of the authenticated user"),
+                    post=extend_schema(summary="Create a new contact for the authenticated user"),
+                    put=extend_schema(summary="Update the contact information of the authenticated user"),
+                    delete=extend_schema(summary="Delete the contact of the authenticated user"))
 class ContactView(APIView):
     """
        A class for managing contact information.
@@ -663,6 +690,12 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(tags=["Shopping"])
+@extend_schema_view(get=extend_schema(summary="Retrieve the details of a specific order"),
+                    post=extend_schema(summary="Create a new order"),
+                    put=extend_schema(summary="Update the details of a specific order"),
+                    delete=extend_schema(summary="Delete a specific order")
+                    )
 class OrderView(APIView):
     """
     Класс для получения и размешения заказов пользователями
