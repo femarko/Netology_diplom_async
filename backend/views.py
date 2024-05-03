@@ -1,4 +1,6 @@
 from distutils.util import strtobool
+
+from drf_spectacular.utils import extend_schema_view, extend_schema
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
@@ -255,7 +257,8 @@ class ProductInfoView(APIView):
 
         return Response(serializer.data)
 
-
+@extend_schema_view(get=extend_schema(summary="Decorating the class: param=summary",
+                                      description="Decorating the class: param=description"))
 class BasketView(APIView):
     """
     A class for managing the user's shopping basket.
@@ -293,6 +296,8 @@ class BasketView(APIView):
         return Response(serializer.data)
 
     # редактировать корзину
+    @extend_schema(summary="Decorating the function: param=summary",
+                   description="Decorating the function: param=description")
     def post(self, request, *args, **kwargs):
         """
                Add an items to the user's basket.
