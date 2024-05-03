@@ -309,8 +309,8 @@ class BasketView(APIView):
         return Response(serializer.data)
 
     # редактировать корзину
-    @extend_schema(summary="Decorating the function: param=summary",
-                   description="Decorating the function: param=description")
+    # @extend_schema(summary="Decorating the function: param=summary",
+    #                description="Decorating the function: param=description")
     def post(self, request, *args, **kwargs):
         """
                Add an items to the user's basket.
