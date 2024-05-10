@@ -179,3 +179,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 # CELERY_ACCEPT_CONTENT = ['json', 'ModelBase']
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Netology diplom async",
+    "DESCRIPTION": "Online store API",# название проекта
+    "VERSION": "v1", # версия проекта
+    "SERVE_INCLUDE_SCHEMA": False, # исключить эндпоинт /schema
+    "SWAGGER_UI_SETTINGS": {
+        "filter": True, # включить поиск по тегам
+    },
+    "COMPONENT_SPLIT_REQUEST": True
+}
