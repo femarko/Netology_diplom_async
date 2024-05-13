@@ -1,3 +1,13 @@
 .env
-venv
+venv/
 dipl_async/
+.pytest_cache/
+data/
+.env.example
+basket.json
+db_structure.png
+docker-compose.yml
+Dockerfile.celery
+pattern_docker-compose.yml
+README_2.md
+testy.py
