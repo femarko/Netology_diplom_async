@@ -11,4 +11,4 @@ Django-приложение для автоматизации закупок в 
 - создать файл `.env`, где прописать параметры, включая имя и пароль созданной БД (образец: `.env.example`)
 - установить зависимости: `$ pip install -r requirements.txt`
 - запустить `Redis`: `$ docker-compose up`
-- запустить `Celery`: `$ celery -A netology_pd_diplom worker`
+- запустить `Celery`: `$ celery -A netology_pd_diplom worker` _
