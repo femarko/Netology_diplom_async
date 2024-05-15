@@ -4,10 +4,14 @@ dipl_async/
 .pytest_cache/
 data/
 .env.example
+.gitignore
 basket.json
 db_structure.png
 docker-compose.yml
 Dockerfile.celery
 pattern_docker-compose.yml
 README_2.md
+README.md
+requirements.txt
+requirements_initial.txt
 testy.py
