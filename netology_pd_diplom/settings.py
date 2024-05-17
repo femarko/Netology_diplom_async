@@ -27,7 +27,7 @@ env = environ.Env(
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Take environment variables from .env file
-environ.Env.read_env(env_file=Path('.env'))
+environ.Env.read_env()
 
 
 # Quick-start development settings - unsuitable for production
