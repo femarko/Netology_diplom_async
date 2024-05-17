@@ -6,10 +6,24 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DB_HOST=database
-      - DB_NAME=db_name
-      - DB_USER=db_user
-      - DB_PASSWORD=db_password
+      - DB_ENGINE=${DB_ENGINE}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USE_SSL=${EMAIL_USE_SSL}
+      - SERVER_EMAIL=${SERVER_EMAIL}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     command:
       sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     depends_on:
@@ -19,9 +33,9 @@ services:
   database:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_DB=db_name
-      - POSTGRES_USER=db_user
-      - POSTGRES_PASSWORD=db_password
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
   redis:
     image: redis
