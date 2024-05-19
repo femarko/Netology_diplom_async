@@ -5,24 +5,8 @@ services:
     build: .
     ports:
       - "8000:8000"
-    environment:
-      - DB_ENGINE=${DB_ENGINE}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - SECRET_KEY=${SECRET_KEY}
-      - DEBUG=${DEBUG}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USE_SSL=${EMAIL_USE_SSL}
-      - SERVER_EMAIL=${SERVER_EMAIL}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     command:
       sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     depends_on:
@@ -33,10 +17,8 @@ services:
 
   database:
     image: postgres:16-alpine
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     healthcheck:
       test: sh -c "pg_isready -U db_user -d db_name"
       interval: 10s
@@ -52,24 +34,8 @@ services:
 
   celery_worker:
     build: .
-    environment:
-      - DB_ENGINE=${DB_ENGINE}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - SECRET_KEY=${SECRET_KEY}
-      - DEBUG=${DEBUG}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_USE_SSL=${EMAIL_USE_SSL}
-      - SERVER_EMAIL=${SERVER_EMAIL}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     entrypoint: celery
     command: -A netology_pd_diplom worker --loglevel=info
     depends_on:
