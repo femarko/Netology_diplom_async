@@ -20,13 +20,13 @@ from celery.result import AsyncResult
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializer, OrderSerializer, ContactSerializer
+    OrderItemSerializer, OrderSerializer, ContactSerializer, InputUserDataSerializer
 from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
 
 
 @extend_schema(tags=["Users"])
-@extend_schema_view(post=extend_schema(summary="Registration of a new account"))
+@extend_schema_view(post=extend_schema(summary="Registration of a new account", request=InputUserDataSerializer))
 class RegisterAccount(APIView):
     """
     Для регистрации покупателей
@@ -106,7 +106,7 @@ class ConfirmAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 @extend_schema(tags=["Users"])
-@extend_schema_view(get=extend_schema(summary="Retrieve user data") ,post=extend_schema(summary="Update user data"))
+@extend_schema_view(get=extend_schema(summary="Retrieve user data"), post=extend_schema(summary="Update user data"))
 class AccountDetails(APIView):
     """
     A class for managing user account details.

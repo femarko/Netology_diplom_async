@@ -87,3 +87,11 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('id', 'ordered_items', 'state', 'dt', 'total_sum', 'contact',)
         read_only_fields = ('id',)
+
+
+class InputUserDataSerializer(serializers.ModelSerializer):
+    password = serializers.CharField
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email', 'password', 'company', 'position')
