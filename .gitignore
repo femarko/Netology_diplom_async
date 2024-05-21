@@ -117,3 +117,6 @@ db_structure.png
 README_2.md
 requirements_initial.txt
 
+local_settings/
+local_settings.py
+
