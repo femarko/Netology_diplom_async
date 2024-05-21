@@ -1,7 +1,9 @@
 # Верстальщик
 from rest_framework import serializers
 
-from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
+import backend.models
+from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact, \
+    ConfirmEmailToken
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -90,8 +92,31 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class InputUserDataSerializer(serializers.ModelSerializer):
-    password = serializers.CharField
 
     class Meta:
         model = User
         fields = ('first_name', 'last_name', 'email', 'password', 'company', 'position')
+
+
+class InputAccountConfirmationDataSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    email = serializers.EmailField()
+
+class AccountDetailsSerializer(serializers.Serializer):
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+    company = serializers.CharField()
+    position = serializers.CharField()
+    city = serializers.CharField()
+    street = serializers.CharField()
+    house = serializers.CharField()
+    structure = serializers.CharField()
+    building = serializers.CharField()
+    apartment = serializers.CharField()
+    phone = serializers.CharField()
+
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
