@@ -109,6 +109,7 @@ req.txt
 
 
 pattern_docker-compose.yml
+docker-compose.dev.yml
 shop1.yaml
 testy.py
 basket.json

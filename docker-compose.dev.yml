@@ -20,7 +20,7 @@ services:
   database:
     image: postgres:16-alpine
     env_file:
-      - .env
+      - .env.dev
     healthcheck:
       test: sh -c "pg_isready -U db_user -d db_name"
       interval: 10s
@@ -37,7 +37,7 @@ services:
   celery_worker:
     build: .
     env_file:
-      - .env
+      - .env.dev
     entrypoint: celery
     command: -A netology_pd_diplom worker --loglevel=info
     depends_on:
