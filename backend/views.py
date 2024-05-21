@@ -74,6 +74,7 @@ class RegisterAccount(APIView):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+
 @extend_schema(tags=["Users"])
 @extend_schema_view(post=extend_schema(summary="Account confirmation",
                                        request=InputAccountConfirmationDataSerializer
@@ -109,36 +110,37 @@ class ConfirmAccount(APIView):
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+
 @extend_schema(tags=["Users"])
 @extend_schema_view(get=extend_schema(
-                        summary="Retrieve user data",
-                        request=AccountDetailsSerializer,
-                        parameters=[
-                            OpenApiParameter(
-                                name="Authorization",
-                                location=OpenApiParameter.HEADER,
-                                # type=OpenApiTypes.REGEX,
-                                description="Token string from response body, received in response to login "
-                                            "POST-request",
-                                # pattern='^Token \w$'
-                                # examples="Token token_string"
-                            )
-                        ]
-                    ),
-                    post=extend_schema(
-                        summary="Update user data",
-                        request=AccountDetailsSerializer,
-                        parameters=[
-                            OpenApiParameter(
-                                name="Authorization",
-                                location=OpenApiParameter.HEADER,
-                                type=OpenApiTypes.REGEX,
-                                description="Token string from response body, received in response to login "
-                                            "POST-request",
-                                # pattern="Token token_string"
-                            )
-                        ]
-                    ))
+    summary="Retrieve user data",
+    request=AccountDetailsSerializer,
+    # parameters=[
+    #     OpenApiParameter(
+    #         name="authorization",
+    #         location=OpenApiParameter.HEADER,
+    #         # type={"pattern": "^Token \w$", "type": "string", "format": "regex"}, #OpenApiTypes.REGEX
+    #         description="Token string from response body, received in response to login "
+    #                     "POST-request",
+    #         # pattern='^Token \w$'
+    #         # examples="Token token_string"
+    #     )
+    # ]
+),
+    post=extend_schema(
+        summary="Update user data",
+        request=AccountDetailsSerializer,
+        # parameters=[
+        #     OpenApiParameter(
+        #         name="authorization",
+        #         location=OpenApiParameter.HEADER,
+        #         type=OpenApiTypes.REGEX,
+        #         description="Token string from response body, received in response to login "
+        #                     "POST-request",
+                # pattern="Token token_string"
+        #     )
+        # ]
+    ))
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -205,6 +207,7 @@ class AccountDetails(APIView):
         else:
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
 
+
 @extend_schema(tags=["Users"])
 @extend_schema_view(post=extend_schema(summary="Login", request=LoginSerializer))
 class LoginAccount(APIView):
@@ -246,6 +249,7 @@ class CategoryView(ListAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
+
 @extend_schema(tags=["Shops"])
 @extend_schema_view(get=extend_schema(summary="Retrieve shops"))
 class ShopView(ListAPIView):
@@ -255,8 +259,12 @@ class ShopView(ListAPIView):
     queryset = Shop.objects.filter(state=True)
     serializer_class = ShopSerializer
 
+
 @extend_schema(tags=["Products"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the product information based on the specified filters"))
+@extend_schema_view(get=extend_schema(
+    summary="Retrieve the product information based on the specified filters",
+    parameters=[OpenApiParameter(name="shop_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
+                OpenApiParameter(name="category_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY)]))
 class ProductInfoView(APIView):
     """
         A class for searching products.
@@ -298,8 +306,16 @@ class ProductInfoView(APIView):
 
         return Response(serializer.data)
 
+
 @extend_schema(tags=["Shopping"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket"),
+@extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket",
+                                      # parameters=[OpenApiParameter(
+                                      #     name="Authorization",
+                                      #     location=OpenApiParameter.HEADER,
+                                      #     description="Token string from response body, received in response to login "
+                                      #       "POST-request",
+                                      #     type=OpenApiTypes.STR)]
+                                      ),
                     post=extend_schema(summary="Add an item to the user's basket"),
                     put=extend_schema(summary="Update the quantity of an item in the user's basket"),
                     delete=extend_schema(summary="Remove an item from the user's basket")
@@ -599,6 +615,7 @@ class PartnerOrders(APIView):
 
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
+
 
 @extend_schema(tags=["Users"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the contact information of the authenticated user"),
