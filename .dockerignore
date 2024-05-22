@@ -1,4 +1,5 @@
 .env
+.env.dev
 venv/
 dipl_async/
 .pytest_cache/
