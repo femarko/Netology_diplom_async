@@ -40,7 +40,7 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
-    list_display = ("id", 'email', 'first_name', 'last_name', 'is_staff')
+    list_display = ("id", 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'last_login')
     list_filter = ("type",)
 
 

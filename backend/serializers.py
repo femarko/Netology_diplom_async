@@ -1,9 +1,7 @@
 # Верстальщик
 from rest_framework import serializers
 
-import backend.models
-from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact, \
-    ConfirmEmailToken
+from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -98,25 +96,3 @@ class InputUserDataSerializer(serializers.ModelSerializer):
         fields = ('first_name', 'last_name', 'email', 'password', 'company', 'position')
 
 
-class InputAccountConfirmationDataSerializer(serializers.Serializer):
-    token = serializers.CharField()
-    email = serializers.EmailField()
-
-class AccountDetailsSerializer(serializers.Serializer):
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    email = serializers.EmailField()
-    company = serializers.CharField()
-    position = serializers.CharField()
-    city = serializers.CharField()
-    street = serializers.CharField()
-    house = serializers.CharField()
-    structure = serializers.CharField()
-    building = serializers.CharField()
-    apartment = serializers.CharField()
-    phone = serializers.CharField()
-
-
-class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField()

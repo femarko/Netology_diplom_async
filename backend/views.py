@@ -21,8 +21,8 @@ from celery.result import AsyncResult
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializer, OrderSerializer, ContactSerializer, InputUserDataSerializer, \
-    InputAccountConfirmationDataSerializer, AccountDetailsSerializer, LoginSerializer
+    OrderItemSerializer, OrderSerializer, ContactSerializer, InputUserDataSerializer
+from backend import spectacular_serializers
 from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
 
@@ -77,7 +77,7 @@ class RegisterAccount(APIView):
 
 @extend_schema(tags=["Users"])
 @extend_schema_view(post=extend_schema(summary="Account confirmation",
-                                       request=InputAccountConfirmationDataSerializer
+                                       request=spectacular_serializers.InputAccountConfirmationDataSerializer
                                        ))
 class ConfirmAccount(APIView):
     """
@@ -112,35 +112,8 @@ class ConfirmAccount(APIView):
 
 
 @extend_schema(tags=["Users"])
-@extend_schema_view(get=extend_schema(
-    summary="Retrieve user data",
-    request=AccountDetailsSerializer,
-    # parameters=[
-    #     OpenApiParameter(
-    #         name="authorization",
-    #         location=OpenApiParameter.HEADER,
-    #         # type={"pattern": "^Token \w$", "type": "string", "format": "regex"}, #OpenApiTypes.REGEX
-    #         description="Token string from response body, received in response to login "
-    #                     "POST-request",
-    #         # pattern='^Token \w$'
-    #         # examples="Token token_string"
-    #     )
-    # ]
-),
-    post=extend_schema(
-        summary="Update user data",
-        request=AccountDetailsSerializer,
-        # parameters=[
-        #     OpenApiParameter(
-        #         name="authorization",
-        #         location=OpenApiParameter.HEADER,
-        #         type=OpenApiTypes.REGEX,
-        #         description="Token string from response body, received in response to login "
-        #                     "POST-request",
-                # pattern="Token token_string"
-        #     )
-        # ]
-    ))
+@extend_schema_view(get=extend_schema(summary="Retrieve user data", request=UserSerializer),
+                    post=extend_schema(summary="Update user data", request=spectacular_serializers.UserDataSerializer))
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -209,7 +182,7 @@ class AccountDetails(APIView):
 
 
 @extend_schema(tags=["Users"])
-@extend_schema_view(post=extend_schema(summary="Login", request=LoginSerializer))
+@extend_schema_view(post=extend_schema(summary="Login", request=spectacular_serializers.LoginSerializer))
 class LoginAccount(APIView):
     """
     Класс для авторизации пользователей
@@ -618,8 +591,10 @@ class PartnerOrders(APIView):
 
 
 @extend_schema(tags=["Users"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the contact information of the authenticated user"),
-                    post=extend_schema(summary="Create a new contact for the authenticated user"),
+@extend_schema_view(get=extend_schema(summary="Retrieve the contact information of the authenticated user",
+                                      request=ContactSerializer),
+                    post=extend_schema(summary="Create a new contact for the authenticated user",
+                                       request=spectacular_serializers.ContactSerializer),
                     put=extend_schema(summary="Update the contact information of the authenticated user"),
                     delete=extend_schema(summary="Delete the contact of the authenticated user"))
 class ContactView(APIView):
