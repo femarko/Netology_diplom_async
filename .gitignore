@@ -107,7 +107,6 @@ venv.bak/
 .mypy_cache/
 req.txt
 
-
 pattern_docker-compose.yml
 docker-compose.dev.yml
 shop1.yaml

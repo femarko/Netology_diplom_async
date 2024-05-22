@@ -8,6 +8,7 @@ data/
 basket.json
 db_structure.png
 docker-compose.yml
+docker-compose.dev.yml
 Dockerfile.celery
 pattern_docker-compose.yml
 README_2.md
