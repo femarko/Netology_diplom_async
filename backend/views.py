@@ -1,7 +1,7 @@
 from distutils.util import strtobool
 
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, inline_serializer, OpenApiExample
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
@@ -10,6 +10,7 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
+from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -594,9 +595,28 @@ class PartnerOrders(APIView):
 @extend_schema_view(get=extend_schema(summary="Retrieve the contact information of the authenticated user",
                                       request=ContactSerializer),
                     post=extend_schema(summary="Create a new contact for the authenticated user",
-                                       request=spectacular_serializers.ContactSerializer),
+                                       request=spectacular_serializers.ContactSerializer,
+                                       examples=[OpenApiExample("Request example",
+                                                                value={
+                                                                    "city": "Suncity",
+                                                                    "street": "Moonstreet",
+                                                                    "phone": "+0001112223344",
+                                                                    # "house": "",
+                                                                    # "structure": "",
+                                                                    # "building": "",
+                                                                    # "apartment": ""
+                                                                })]
+                                                                ),
                     put=extend_schema(summary="Update the contact information of the authenticated user"),
-                    delete=extend_schema(summary="Delete the contact of the authenticated user"))
+                    delete=extend_schema(
+                        summary="Delete the contact of the authenticated user",
+                        parameters=[
+                            OpenApiParameter(name="items",
+                                             type=OpenApiTypes.STR,
+                                             location=OpenApiParameter.HEADER,
+                                             required=True,
+                                             examples=[OpenApiExample('Sample of the "items" header',value="1,2,3")])
+                        ]))
 class ContactView(APIView):
     """
        A class for managing contact information.
@@ -644,9 +664,12 @@ class ContactView(APIView):
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         if {'city', 'street', 'phone'}.issubset(request.data):
-            request.data._mutable = True
-            request.data.update({'user': request.user.id})
-            serializer = ContactSerializer(data=request.data)
+            # request.data._mutable = True
+            mutable_request_data = request.data.copy()
+            # request.data.update({'user': request.user.id})
+            mutable_request_data.update({'user': request.user.id})
+            # serializer = ContactSerializer(data=request.data)
+            serializer = ContactSerializer(data=mutable_request_data)
 
             if serializer.is_valid():
                 serializer.save()
@@ -670,7 +693,10 @@ class ContactView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        items_sting = request.data.get('items')
+        # items_sting = request.data.get('items')
+        # items_sting = request.query_params.get('items')
+        items_sting = request.headers.get('items')
+
         if items_sting:
             items_list = items_sting.split(',')
             query = Q()

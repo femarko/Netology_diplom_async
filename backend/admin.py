@@ -5,6 +5,11 @@ from backend.models import User, Shop, Category, Product, ProductInfo, Parameter
     Contact, ConfirmEmailToken
 
 
+class ContactInline(admin.TabularInline):
+    model = Contact
+    extra = 0
+
+
 class ProductInfoInline(admin.TabularInline):
     model = ProductInfo
     extra = 0
@@ -42,6 +47,7 @@ class CustomUserAdmin(UserAdmin):
     )
     list_display = ("id", 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'last_login')
     list_filter = ("type",)
+    inlines = (ContactInline,)
 
 
 @admin.register(Shop)
@@ -92,7 +98,7 @@ class OrderItemAdmin(admin.ModelAdmin):
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
-    list_display = ("user", "city", "street", "house", "structure", "building", "apartment", "phone")
+    list_display = ("id", "user", "city", "street", "house", "structure", "building", "apartment", "phone")
 
 
 @admin.register(ConfirmEmailToken)
