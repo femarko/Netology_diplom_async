@@ -625,8 +625,7 @@ class PartnerOrders(APIView):
                                                                    "building": "2",
                                                                    "apartment": "1",
                                                                    "phone": "+01112223344"
-                                                               })]
-                                      ))
+                                                               })]))
 class ContactView(APIView):
     """
        A class for managing contact information.
