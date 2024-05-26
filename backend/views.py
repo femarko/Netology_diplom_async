@@ -601,23 +601,32 @@ class PartnerOrders(APIView):
                                                                     "city": "Suncity",
                                                                     "street": "Moonstreet",
                                                                     "phone": "+0001112223344",
-                                                                    # "house": "",
-                                                                    # "structure": "",
-                                                                    # "building": "",
-                                                                    # "apartment": ""
-                                                                })]
-                                                                ),
-                    delete=extend_schema(
-                        summary="Delete the contact of the authenticated user",
-                        parameters=[
-                            OpenApiParameter(name="contact_ids",
-                                             type=OpenApiTypes.STR,
-                                             location=OpenApiParameter.QUERY,
-                                             required=True,
-                                             examples=[OpenApiExample('Value example', value="1,2,3")])
-                        ]),
-                    put=extend_schema(summary="Update the contact information of the authenticated user"),
-                    )
+                                                                })]),
+                    delete=extend_schema(summary="Delete the contact of the authenticated user",
+                                         parameters=[OpenApiParameter(name="contact_ids",
+                                                                      type=OpenApiTypes.STR,
+                                                                      location=OpenApiParameter.QUERY,
+                                                                      required=True,
+                                                                      examples=[OpenApiExample('Example value',
+                                                                                               value="1,2,3")])]),
+                    put=extend_schema(summary="Partially or fully update of a contact record, relating to "
+                                                  "authenticated user",
+                                      description="New values should be specified as request body parameters. In case "
+                                                  "of partial update only parameters representing amended values "
+                                                  "are needed.",
+                                      request=spectacular_serializers.ContactUpdateSerializer,
+                                      examples=[OpenApiExample(name="Example value",
+                                                               value={
+                                                                   "id": "1",
+                                                                   "city": "Test city",
+                                                                   "street": "Test street",
+                                                                   "house": "4",
+                                                                   "structure": "3",
+                                                                   "building": "2",
+                                                                   "apartment": "1",
+                                                                   "phone": "+01112223344"
+                                                               })]
+                                      ))
 class ContactView(APIView):
     """
        A class for managing contact information.

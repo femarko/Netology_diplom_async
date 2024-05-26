@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+import backend.serializers
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
 
 
@@ -31,3 +32,14 @@ class ContactSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+
+
+class ContactUpdateSerializer(ContactSerializer):
+    id = serializers.CharField(required=True)
+    city = serializers.CharField(source="Contact.city", required=False)
+    street = serializers.CharField(source="Contact.street", required=False)
+    house = serializers.CharField(source="Contact.house", required=False)
+    structure = serializers.CharField(source="Contact.structure", required=False)
+    building = serializers.CharField(source="Contact.building", required=False)
+    apartment = serializers.CharField(source="Contact.apartment", required=False)
+    phone = serializers.CharField(source="Contact.phone", required=False)
