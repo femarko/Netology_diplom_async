@@ -28,7 +28,7 @@ from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
 
 
-@extend_schema(tags=["Users"])
+@extend_schema(tags=["user"])
 @extend_schema_view(post=extend_schema(summary="Registration of a new account", request=InputUserDataSerializer))
 class RegisterAccount(APIView):
     """
@@ -76,7 +76,7 @@ class RegisterAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-@extend_schema(tags=["Users"])
+@extend_schema(tags=["user"])
 @extend_schema_view(post=extend_schema(summary="Account confirmation",
                                        request=spectacular_serializers.InputAccountConfirmationDataSerializer
                                        ))
@@ -112,7 +112,7 @@ class ConfirmAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-@extend_schema(tags=["Users"])
+@extend_schema(tags=["user"])
 @extend_schema_view(get=extend_schema(summary="Retrieve user data", request=UserSerializer),
                     post=extend_schema(summary="Update user data", request=spectacular_serializers.UserDataSerializer))
 class AccountDetails(APIView):
@@ -182,7 +182,7 @@ class AccountDetails(APIView):
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
 
 
-@extend_schema(tags=["Users"])
+@extend_schema(tags=["user"])
 @extend_schema_view(post=extend_schema(summary="Login", request=spectacular_serializers.LoginSerializer))
 class LoginAccount(APIView):
     """
@@ -214,7 +214,7 @@ class LoginAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-@extend_schema(tags=["Products"])
+@extend_schema(tags=["categories & products", "shopping"])
 @extend_schema_view(get=extend_schema(summary="Retrieve categories"))
 class CategoryView(ListAPIView):
     """
@@ -224,7 +224,7 @@ class CategoryView(ListAPIView):
     serializer_class = CategorySerializer
 
 
-@extend_schema(tags=["Shops"])
+@extend_schema(tags=["shopping", "shops"])
 @extend_schema_view(get=extend_schema(summary="Retrieve shops"))
 class ShopView(ListAPIView):
     """
@@ -234,7 +234,7 @@ class ShopView(ListAPIView):
     serializer_class = ShopSerializer
 
 
-@extend_schema(tags=["Products"])
+@extend_schema(tags=["categories & products", "shopping"])
 @extend_schema_view(get=extend_schema(
     summary="Retrieve the product information based on the specified filters",
     parameters=[OpenApiParameter(name="shop_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
@@ -281,7 +281,7 @@ class ProductInfoView(APIView):
         return Response(serializer.data)
 
 
-@extend_schema(tags=["Shopping"])
+@extend_schema(tags=["shopping"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket",
                                       # parameters=[OpenApiParameter(
                                       #     name="Authorization",
@@ -435,7 +435,7 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-@extend_schema(tags=["Partners"])
+@extend_schema(tags=["partners"])
 @extend_schema_view(get=extend_schema(summary="Returns status of the celery task"),
                     post=extend_schema(summary="Update the partner information")
                     )
@@ -490,7 +490,7 @@ class PartnerUpdate(APIView):
         return JsonResponse({'task_status': task.status})
 
 
-@extend_schema(tags=["Partners"])
+@extend_schema(tags=["partners"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the state of the partner"),
                     post=extend_schema(summary="Retrieve the state of the partner")
                     )
@@ -553,7 +553,7 @@ class PartnerState(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-@extend_schema(tags=["Partners"])
+@extend_schema(tags=["partners"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the orders associated with the authenticated partner"))
 class PartnerOrders(APIView):
     """
@@ -591,7 +591,7 @@ class PartnerOrders(APIView):
         return Response(serializer.data)
 
 
-@extend_schema(tags=["Users"])
+@extend_schema(tags=["user", "contact"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the contact information of the authenticated user",
                                       request=ContactSerializer),
                     post=extend_schema(summary="Create a new contact for the authenticated user",
@@ -607,16 +607,17 @@ class PartnerOrders(APIView):
                                                                     # "apartment": ""
                                                                 })]
                                                                 ),
-                    put=extend_schema(summary="Update the contact information of the authenticated user"),
                     delete=extend_schema(
                         summary="Delete the contact of the authenticated user",
                         parameters=[
-                            OpenApiParameter(name="items",
+                            OpenApiParameter(name="contact_ids",
                                              type=OpenApiTypes.STR,
-                                             location=OpenApiParameter.HEADER,
+                                             location=OpenApiParameter.QUERY,
                                              required=True,
-                                             examples=[OpenApiExample('Sample of the "items" header',value="1,2,3")])
-                        ]))
+                                             examples=[OpenApiExample('Value example', value="1,2,3")])
+                        ]),
+                    put=extend_schema(summary="Update the contact information of the authenticated user"),
+                    )
 class ContactView(APIView):
     """
        A class for managing contact information.
@@ -694,8 +695,8 @@ class ContactView(APIView):
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         # items_sting = request.data.get('items')
-        # items_sting = request.query_params.get('items')
-        items_sting = request.headers.get('items')
+        items_sting = request.query_params.get('contact_ids')
+        # items_sting = request.headers.get('items')
 
         if items_sting:
             items_list = items_sting.split(',')
@@ -740,7 +741,7 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-@extend_schema(tags=["Shopping"])
+@extend_schema(tags=["shopping", "order"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the details of a specific order"),
                     post=extend_schema(summary="Create a new order"),
                     put=extend_schema(summary="Update the details of a specific order"),
