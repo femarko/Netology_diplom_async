@@ -616,16 +616,14 @@ class PartnerOrders(APIView):
                                                   "are needed.",
                                       request=spectacular_serializers.ContactUpdateSerializer,
                                       examples=[OpenApiExample(name="Example value",
-                                                               value={
-                                                                   "id": "1",
-                                                                   "city": "Test city",
-                                                                   "street": "Test street",
-                                                                   "house": "4",
-                                                                   "structure": "3",
-                                                                   "building": "2",
-                                                                   "apartment": "1",
-                                                                   "phone": "+01112223344"
-                                                               })]))
+                                                               value={"id": "1",
+                                                                      "city": "Test city",
+                                                                      "street": "Test street",
+                                                                      "house": "4",
+                                                                      "structure": "3",
+                                                                      "building": "2",
+                                                                      "apartment": "1",
+                                                                      "phone": "+01112223344"})]))
 class ContactView(APIView):
     """
        A class for managing contact information.
