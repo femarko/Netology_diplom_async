@@ -43,3 +43,7 @@ class ContactUpdateSerializer(ContactSerializer):
     building = serializers.CharField(source="Contact.building", required=False)
     apartment = serializers.CharField(source="Contact.apartment", required=False)
     phone = serializers.CharField(source="Contact.phone", required=False)
+
+
+class PartnerStateSerializer(serializers.Serializer):
+    state = serializers.ChoiceField(["True", "False"])

@@ -5,10 +5,19 @@ from backend.models import User, Shop, Category, Product, ProductInfo, Parameter
     Contact, ConfirmEmailToken
 
 
+class CustomUserInline(admin.TabularInline):
+    model = User
+    extra = 0
+
+
 class ContactInline(admin.TabularInline):
     model = Contact
     extra = 0
 
+
+class ShopInline(admin.TabularInline):
+    model = Shop
+    extra = 0
 
 class ProductInfoInline(admin.TabularInline):
     model = ProductInfo
@@ -45,9 +54,10 @@ class CustomUserAdmin(UserAdmin):
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
-    list_display = ("id", 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'last_login')
+    list_display = ("id", 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'last_login', 'date_joined',
+                    'type')
     list_filter = ("type",)
-    inlines = (ContactInline,)
+    inlines = (ContactInline, ShopInline)
 
 
 @admin.register(Shop)
