@@ -118,4 +118,6 @@ requirements_initial.txt
 
 local_settings/
 local_settings.py
+local_dev/
+local_dev_settings.py
 
