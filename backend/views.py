@@ -22,14 +22,15 @@ from celery.result import AsyncResult
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializer, OrderSerializer, ContactSerializer, InputUserDataSerializer
+    OrderItemSerializer, OrderSerializer, ContactSerializer, RegisterAccountSerializer
 from backend import spectacular_serializers
 from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
 
 
 @extend_schema(tags=["users"])
-@extend_schema_view(post=extend_schema(summary="Registration of a new account", request=InputUserDataSerializer))
+@extend_schema_view(post=extend_schema(summary="Registration of a new account",
+                                       request=spectacular_serializers.RegisterAccountSerializer))
 class RegisterAccount(APIView):
     """
     Для регистрации покупателей
@@ -48,7 +49,7 @@ class RegisterAccount(APIView):
                 JsonResponse: The response indicating the status of the operation and any errors.
             """
         # проверяем обязательные аргументы
-        if {'first_name', 'last_name', 'email', 'password', 'company', 'position'}.issubset(request.data):
+        if {'type', 'first_name', 'last_name', 'email', 'password', 'company', 'position'}.issubset(request.data):
 
             # проверяем пароль на сложность
             sad = 'asd'
@@ -63,15 +64,15 @@ class RegisterAccount(APIView):
             else:
                 # проверяем данные для уникальности имени пользователя
 
-                user_serializer = UserSerializer(data=request.data)
-                if user_serializer.is_valid():
+                register_account_serializer = RegisterAccountSerializer(data=request.data)
+                if register_account_serializer.is_valid():
                     # сохраняем пользователя
-                    user = user_serializer.save()
+                    user = register_account_serializer.save()
                     user.set_password(request.data['password'])
                     user.save()
                     return JsonResponse({'Status': True})
                 else:
-                    return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
+                    return JsonResponse({'Status': False, 'Errors': register_account_serializer.errors})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 

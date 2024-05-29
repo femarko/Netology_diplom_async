@@ -14,6 +14,15 @@ class ContactSerializer(serializers.ModelSerializer):
         }
 
 
+class RegisterAccountSerializer(serializers.ModelSerializer):
+    contacts = ContactSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'type', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts')
+        read_only_fields = ('id',)
+
+
 class UserSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(read_only=True, many=True)
 
@@ -87,12 +96,3 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('id', 'ordered_items', 'state', 'dt', 'total_sum', 'contact',)
         read_only_fields = ('id',)
-
-
-class InputUserDataSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = ('first_name', 'last_name', 'email', 'password', 'company', 'position')
-
-

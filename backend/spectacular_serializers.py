@@ -5,6 +5,13 @@ import backend.serializers
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
 
 
+class RegisterAccountSerializer(backend.serializers.RegisterAccountSerializer):
+    type = serializers.ChoiceField(backend.models.USER_TYPE_CHOICES, required=True)
+
+    class Meta:
+        model = User
+        fields = ('type', 'first_name', 'last_name', 'email', 'password', 'company', 'position')
+
 
 class InputAccountConfirmationDataSerializer(serializers.Serializer):
     token = serializers.CharField()
