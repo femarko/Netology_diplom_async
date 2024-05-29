@@ -435,9 +435,8 @@ class BasketView(APIView):
 
 
 @extend_schema(tags=["partners"])
-@extend_schema_view(get=extend_schema(summary="Returns status of the celery task"),
-                    post=extend_schema(summary="Update the partner information")
-                    )
+@extend_schema_view(post=extend_schema(summary="Update the partner information",
+                                       request=spectacular_serializers.PartnerUpdateSerializer))
 class PartnerUpdate(APIView):
     """
     A class for updating partner information.
@@ -484,8 +483,13 @@ class PartnerUpdate(APIView):
                     return JsonResponse({'task_id': task_id})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-    def get(self, request, task_id: str) -> AsyncResult.status:
-        task = AsyncResult(task_id)
+
+@extend_schema(tags=["partners"])
+@extend_schema_view(get=extend_schema(summary="Partners's price-list update task status"))
+class PartnerUpdateTaskStatus(APIView):
+    '''The celery-task status is represented as a response of a get-request to a specific url'''
+    def get(self, request: Request, task_id: str) -> JsonResponse:
+        task: AsyncResult = AsyncResult(task_id)
         return JsonResponse({'task_status': task.status})
 
 

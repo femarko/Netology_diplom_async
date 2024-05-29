@@ -1,3 +1,4 @@
+from django.core.validators import URLValidator
 from rest_framework import serializers
 
 import backend.serializers
@@ -47,3 +48,7 @@ class ContactUpdateSerializer(ContactSerializer):
 
 class PartnerStateSerializer(serializers.Serializer):
     state = serializers.ChoiceField(["True", "False"])
+
+
+class PartnerUpdateSerializer(serializers.Serializer):
+    url = serializers.CharField(validators=[URLValidator])
