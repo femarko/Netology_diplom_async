@@ -282,14 +282,7 @@ class ProductInfoView(APIView):
 
 
 @extend_schema(tags=["shops & shopping"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket",
-                                      # parameters=[OpenApiParameter(
-                                      #     name="Authorization",
-                                      #     location=OpenApiParameter.HEADER,
-                                      #     description="Token string from response body, received in response to login "
-                                      #       "POST-request",
-                                      #     type=OpenApiTypes.STR)]
-                                      ),
+@extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket"),
                     post=extend_schema(summary="Add an item to the user's basket"),
                     put=extend_schema(summary="Update the quantity of an item in the user's basket"),
                     delete=extend_schema(summary="Remove an item from the user's basket")
@@ -331,8 +324,6 @@ class BasketView(APIView):
         return Response(serializer.data)
 
     # редактировать корзину
-    # @extend_schema(summary="Decorating the function: param=summary",
-    #                description="Decorating the function: param=description")
     def post(self, request, *args, **kwargs):
         """
                Add an items to the user's basket.
