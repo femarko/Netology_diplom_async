@@ -66,7 +66,7 @@ class TestUserRegisterConfirmLogin:
             temp_dict: dict[str, str] = copy.deepcopy(user_data)
             temp_dict.pop(key)
             poor_user_data_list.append(temp_dict)
-        result_list: list[dict[str, int | dict[str, bool | str]]] = []
+        result_list: list[dict[str, int] | dict[str, bool | str]] = []
         for data in poor_user_data_list:
             response = client.post(path=path.user_register, data=data)
             result_list.append({"status_code": response.status_code, "json": response.json()})
