@@ -80,7 +80,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductInfo)
 class ProductInfoAdmin(admin.ModelAdmin):
-    list_display = ("model", "external_id", "quantity", "price", "price_rrc")
+    list_display = ("id", "model", "external_id", "product", "shop", "quantity", "price", "price_rrc")
     inlines = (OrderItemInline,)
 
 
