@@ -59,3 +59,7 @@ class PartnerStateSerializer(serializers.Serializer):
 
 class PartnerUpdateSerializer(serializers.Serializer):
     url = serializers.CharField(validators=[URLValidator])
+
+
+class OrderItemSerializer(backend.serializers.OrderItemSerializer):
+    items = backend.serializers.OrderItemSerializer

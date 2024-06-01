@@ -96,7 +96,7 @@ class ProductParameterAdmin(admin.ModelAdmin):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("user", "dt", "state", "contact")
+    list_display = ("id", "user", "dt", "state", "contact")
     inlines = (OrderItemInline,)
 
 
