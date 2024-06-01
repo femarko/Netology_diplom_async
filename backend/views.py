@@ -360,9 +360,9 @@ class BasketView(APIView):
                     else:
                         objects_created += 1
 
-            else:
+                else:
 
-                return JsonResponse({'Status': False, 'Errors': serializer.errors})
+                    return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
             return JsonResponse({'Status': True, 'Создано объектов': objects_created})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
