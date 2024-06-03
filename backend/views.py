@@ -338,15 +338,16 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        # items_sting = request.data.get('items')
-        items_dict = request.data.get('items')
-
-        if items_dict:
-            # try:
-                # items_dict = load_json(items_sting)
-            # except ValueError:
-            #     return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
-            # else:
+        items_sting = request.data.get('items')
+        if items_sting:
+            content_type = request.headers.get("Content-Type")
+            if content_type == "application/json":
+                items_dict = items_sting
+            else:
+                try:
+                    items_dict = load_json(items_sting)
+                except ValueError:
+                    return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
             objects_created = 0
             for order_item in items_dict:
