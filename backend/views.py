@@ -248,7 +248,19 @@ class ShopView(ListAPIView):
                                            ),
                                        ]),
                     put=extend_schema(summary="Update the quantity of an item in the user's basket"),
-                    delete=extend_schema(summary="Remove an item from the user's basket")
+                    delete=extend_schema(summary="Remove an item from the user's basket",
+                                         parameters=[
+                                             OpenApiParameter(
+                                                 name="order_item_ids",
+                                                 location=OpenApiParameter.QUERY,
+                                                 description="Coma-separated set of order items IDs / Single order "
+                                                             "item ID",
+                                                 examples=[OpenApiExample(
+                                                     name="Example value",
+                                                     value="1,2,3"
+                                                 )]
+                                             )
+                                         ])
                     )
 class BasketView(APIView):
     """
@@ -345,7 +357,8 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        items_sting = request.data.get('items')
+        # items_sting = request.data.get('items')
+        items_sting = request.query_params.get('order_item_ids')
         if items_sting:
             items_list = items_sting.split(',')
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
