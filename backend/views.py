@@ -234,56 +234,19 @@ class ShopView(ListAPIView):
     serializer_class = ShopSerializer
 
 
-@extend_schema(tags=["categories & products"])
-@extend_schema_view(get=extend_schema(
-    summary="Retrieve the product information based on the specified filters",
-    parameters=[OpenApiParameter(name="shop_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
-                OpenApiParameter(name="category_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY)]))
-class ProductInfoView(APIView):
-    """
-        A class for searching products.
-
-        Methods:
-        - get: Retrieve the product information based on the specified filters.
-
-        Attributes:
-        - None
-        """
-
-    def get(self, request: Request, *args, **kwargs):
-        """
-               Retrieve the product information based on the specified filters.
-
-               Args:
-               - request (Request): The Django request object.
-
-               Returns:
-               - Response: The response containing the product information.
-               """
-        query = Q(shop__state=True)
-        shop_id = request.query_params.get('shop_id')
-        category_id = request.query_params.get('category_id')
-
-        if shop_id:
-            query = query & Q(shop_id=shop_id)
-
-        if category_id:
-            query = query & Q(product__category_id=category_id)
-
-        # фильтруем и отбрасываем дуликаты
-        queryset = ProductInfo.objects.filter(
-            query).select_related(
-            'shop', 'product__category').prefetch_related(
-            'product_parameters__parameter').distinct()
-
-        serializer = ProductInfoSerializer(queryset, many=True)
-
-        return Response(serializer.data)
-
-
 @extend_schema(tags=["shops & shopping"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket"),
-                    post=extend_schema(summary="Add an item to the user's basket"),
+                    post=extend_schema(
+                        summary="Add an item to the user's basket",
+                        request=spectacular_serializers.OrderItemSerializer,
+                        examples=[
+                            OpenApiExample(
+                                name="Request body example",
+                                value={
+                                    "items": [{"product_info": 1, "quantity": 3}, {"product_info": 2, "quantity": 5}]
+                                               }
+                                           ),
+                                       ]),
                     put=extend_schema(summary="Update the quantity of an item in the user's basket"),
                     delete=extend_schema(summary="Remove an item from the user's basket")
                     )
@@ -428,6 +391,53 @@ class BasketView(APIView):
 
                 return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+@extend_schema(tags=["categories & products"])
+@extend_schema_view(get=extend_schema(
+    summary="Retrieve the product information based on the specified filters",
+    parameters=[OpenApiParameter(name="shop_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
+                OpenApiParameter(name="category_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY)]))
+class ProductInfoView(APIView):
+    """
+        A class for searching products.
+
+        Methods:
+        - get: Retrieve the product information based on the specified filters.
+
+        Attributes:
+        - None
+        """
+
+    def get(self, request: Request, *args, **kwargs):
+        """
+               Retrieve the product information based on the specified filters.
+
+               Args:
+               - request (Request): The Django request object.
+
+               Returns:
+               - Response: The response containing the product information.
+               """
+        query = Q(shop__state=True)
+        shop_id = request.query_params.get('shop_id')
+        category_id = request.query_params.get('category_id')
+
+        if shop_id:
+            query = query & Q(shop_id=shop_id)
+
+        if category_id:
+            query = query & Q(product__category_id=category_id)
+
+        # фильтруем и отбрасываем дуликаты
+        queryset = ProductInfo.objects.filter(
+            query).select_related(
+            'shop', 'product__category').prefetch_related(
+            'product_parameters__parameter').distinct()
+
+        serializer = ProductInfoSerializer(queryset, many=True)
+
+        return Response(serializer.data)
 
 
 @extend_schema(tags=["partners"])
