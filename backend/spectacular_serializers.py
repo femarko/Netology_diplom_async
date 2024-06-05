@@ -63,3 +63,8 @@ class PartnerUpdateSerializer(serializers.Serializer):
 
 class OrderItemSerializer(serializers.Serializer):
     items = serializers.CharField()
+
+
+class OrderSerializer(serializers.Serializer):
+    order_id = serializers.CharField(source="Order.pk")
+    contact_id = serializers.CharField(source="Contact.pk")

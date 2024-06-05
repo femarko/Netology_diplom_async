@@ -780,10 +780,12 @@ class ContactView(APIView):
 
 @extend_schema(tags=["shops & shopping"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the details of a specific order"),
-                    post=extend_schema(summary="Create a new order"),
+                    post=extend_schema(summary="Create a new order",
+                                       request=spectacular_serializers.OrderSerializer,
+                                       examples=[OpenApiExample(name="Example request body",
+                                                                value={"order_id": "3", "contact_id": "2"})]),
                     put=extend_schema(summary="Update the details of a specific order"),
-                    delete=extend_schema(summary="Delete a specific order")
-                    )
+                    delete=extend_schema(summary="Delete a specific order"))
 class OrderView(APIView):
     """
     Класс для получения и размешения заказов пользователями
@@ -833,13 +835,13 @@ class OrderView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if {'id', 'contact'}.issubset(request.data):
-            if request.data['id'].isdigit():
+        if {'order_id', 'contact_id'}.issubset(request.data):
+            if request.data['order_id'].isdigit():
+                requested_order = Order.objects.filter(user_id=request.user.id, id=request.data['order_id'])
+                if not requested_order:
+                    return JsonResponse({'Status': False, 'Errors': 'No order with such order_id'})
                 try:
-                    is_updated = Order.objects.filter(
-                        user_id=request.user.id, id=request.data['id']).update(
-                        contact_id=request.data['contact'],
-                        state='new')
+                    is_updated = requested_order.update(contact_id=request.data['contact_id'], state='new')
                 except IntegrityError as error:
                     print(error)
                     return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
