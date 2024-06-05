@@ -792,8 +792,6 @@ class OrderView(APIView):
     Methods:
     - get: Retrieve the details of a specific order.
     - post: Create a new order.
-    - put: Update the details of a specific order.
-    - delete: Delete a specific order.
 
     Attributes:
     - None
