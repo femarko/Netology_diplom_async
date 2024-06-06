@@ -244,14 +244,14 @@ class ShopView(ListAPIView):
                                 name="Request body example",
                                 value={
                                     "items": [{"product_info": 1, "quantity": 3}, {"product_info": 2, "quantity": 5}]
-                                               }
-                                           ),
-                                       ]),
+                                }
+                            ),
+                        ]),
                     put=extend_schema(summary="Update the quantity of an item in the user's basket",
                                       request=spectacular_serializers.OrderItemSerializer,
                                       examples=[OpenApiExample(
                                           name="Request body example",
-                                          value={"items": [{"id": 90, "quantity":2}, {"id": 91, "quantity":3}]}
+                                          value={"items": [{"id": 90, "quantity": 2}, {"id": 91, "quantity": 3}]}
                                       )]),
                     delete=extend_schema(summary="Remove an item from the user's basket",
                                          parameters=[
@@ -516,6 +516,7 @@ class PartnerUpdate(APIView):
 @extend_schema_view(get=extend_schema(summary="Partners's price-list update task status"))
 class PartnerUpdateTaskStatus(APIView):
     '''The celery-task status is represented as a response of a get-request to a specific url'''
+
     def get(self, request: Request, task_id: str) -> JsonResponse:
         task: AsyncResult = AsyncResult(task_id)
         return JsonResponse({'task_status': task.status})
@@ -649,7 +650,7 @@ class PartnerOrders(APIView):
                                                                       examples=[OpenApiExample('Example value',
                                                                                                value="1,2,3")])]),
                     put=extend_schema(summary="Partially or fully update of a contact record, relating to "
-                                                  "authenticated user",
+                                              "authenticated user",
                                       description="New values should be specified as request body parameters. In case "
                                                   "of partial update only parameters representing amended values "
                                                   "are needed.",
