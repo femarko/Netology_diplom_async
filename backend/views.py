@@ -522,15 +522,23 @@ class PartnerUpdateTaskStatus(APIView):
 
 
 @extend_schema(tags=["partners"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the state of the partner"),
-                    post=extend_schema(summary="Retrieve the state of the partner",
-                                       request=spectacular_serializers.PartnerStateSerializer))
+@extend_schema_view(get=extend_schema(summary="Retrieve the state of a partner"),
+                    post=extend_schema(summary="Update the state of a partner",
+                                       request=spectacular_serializers.PartnerStateSerializer,
+                                       examples=[OpenApiExample(name="Request body example",
+                                                                value={"state": "True"},
+                                                                description="case-insensitive true values: "
+                                                                            "'y', 'yes', 't', 'true', 'on', '1'; "
+                                                                            "case-insensitive false values: "
+                                                                            "'n', 'no', 'f', 'false', 'off', '0'")]
+                                       ))
 class PartnerState(APIView):
     """
        A class for managing partner state.
 
        Methods:
-       - get: Retrieve the state of the partner.
+       - get: Retrieve the state of a partner
+       - post: Update the state of a partner
 
        Attributes:
        - None
