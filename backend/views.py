@@ -782,7 +782,8 @@ class ContactView(APIView):
                         return JsonResponse({'Status': True})
                     else:
                         return JsonResponse({'Status': False, 'Errors': serializer.errors})
-
+                else:
+                    return JsonResponse({'Status': False, 'Errors': 'No contact with such id'})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
