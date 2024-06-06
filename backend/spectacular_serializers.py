@@ -13,7 +13,7 @@ class RegisterAccountSerializer(backend.serializers.RegisterAccountSerializer):
         fields = ('type', 'first_name', 'last_name', 'email', 'password', 'company', 'position')
 
 
-class InputAccountConfirmationDataSerializer(serializers.Serializer):
+class ConfirmAccountSerializer(serializers.Serializer):
     token = serializers.CharField()
     email = serializers.EmailField()
 

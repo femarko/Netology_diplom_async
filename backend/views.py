@@ -79,7 +79,12 @@ class RegisterAccount(APIView):
 
 @extend_schema(tags=["users"])
 @extend_schema_view(post=extend_schema(summary="Account confirmation",
-                                       request=spectacular_serializers.InputAccountConfirmationDataSerializer))
+                                       request=spectacular_serializers.ConfirmAccountSerializer,
+                                       examples=[OpenApiExample(name="Example request body",
+                                                                value={
+                                                                    "token": "huik23kijnmk4jnkjhbnklpsefg9ij",
+                                                                    "email": "user@example.com"
+                                                                })]))
 class ConfirmAccount(APIView):
     """
     Класс для подтверждения почтового адреса
