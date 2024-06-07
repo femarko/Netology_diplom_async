@@ -5,9 +5,11 @@ from django.core.mail import EmailMultiAlternatives
 from django.db.models.signals import post_save
 from django.dispatch import receiver, Signal
 from django_rest_passwordreset.signals import reset_password_token_created
+from django.db.models.signals import post_save
 
-from backend.models import ConfirmEmailToken, User
-from .tasks import password_reset_token_created_task, new_user_registered_signal_task, new_order_signal_task
+from backend.models import ConfirmEmailToken, User, Order, STATE_CHOICES
+from backend.tasks import password_reset_token_created_task, new_user_registered_signal_task, new_order_signal_task, \
+    order_state_changed_notification
 
 new_user_registered = Signal()
 
@@ -56,3 +58,13 @@ def new_order_signal(user_id, **kwargs):
     email = user.email
     # call the celery-task
     new_order_signal_task.delay(email)
+
+
+@receiver(post_save, sender=Order)
+def order_processing_siganl(sender, **kwargs):
+    order_state = kwargs.get("instance").state
+    email = kwargs.get("instance").user.email
+    if order_state and email and (order_state != "basket"):
+        order_states = {state_choice[0] for state_choice in STATE_CHOICES[2:]}
+        if order_state in order_states:
+            order_state_changed_notification.delay(email, order_state)

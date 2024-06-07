@@ -82,3 +82,18 @@ def new_order_signal_task(email):
         [email]
     )
     msg.send()
+
+
+@shared_task
+def order_state_changed_notification(email, order_state):
+    msg = EmailMultiAlternatives(
+        # title:
+        f"Your order state has been changed",
+        # message:
+        f'Current state of your order is: "{order_state.upper()}".',
+        # from:
+        settings.EMAIL_HOST_USER,
+        # to:
+        [email]
+    )
+    msg.send()
