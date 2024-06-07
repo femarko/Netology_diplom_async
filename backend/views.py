@@ -146,7 +146,7 @@ class ConfirmAccount(APIView):
                                                "company": "Dream-team Ltd",
                                                "position": "Boss"
                                            },
-                                           description="Neither field is required."
+                                           description="None of the fields is required."
                                        )]))
 class AccountDetails(APIView):
     """
@@ -190,6 +190,13 @@ class AccountDetails(APIView):
                 """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        # validation of the filed names in the request body
+        available_fields = UserSerializer.Meta.fields[1:]
+        if not set(request.data.keys()).issubset(available_fields):
+            return JsonResponse({'Status': False, 'Error': 'Wrong field name (names)'}, status=400)
+
+
         # проверяем обязательные аргументы
 
         if 'password' in request.data:
