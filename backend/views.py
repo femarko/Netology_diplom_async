@@ -30,7 +30,21 @@ from backend.tasks import update_price_list
 
 @extend_schema(tags=["users"])
 @extend_schema_view(post=extend_schema(summary="Registration of a new account",
-                                       request=spectacular_serializers.RegisterAccountSerializer))
+                                       request=spectacular_serializers.RegisterAccountSerializer,
+                                       examples=[OpenApiExample(name="Example request body",
+                                                                value={
+                                                                    "type": "buyer",
+                                                                    "first_name": "Luke",
+                                                                    "last_name": "Skyworker",
+                                                                    "username": "LSkyworker-2024",
+                                                                    "email": "user@example.com",
+                                                                    "password": "secretpass",
+                                                                    "company": "Dream-team Ltd",
+                                                                    "position": "Boss"
+                                                                },
+                                                                description='Required fields: "type", "first_name", '
+                                                                            '"last_name", "email", "password", '
+                                                                            '"company", "position"')]))
 class RegisterAccount(APIView):
     """
     Для регистрации покупателей
@@ -119,7 +133,21 @@ class ConfirmAccount(APIView):
 
 @extend_schema(tags=["users"])
 @extend_schema_view(get=extend_schema(summary="Retrieve user data", request=UserSerializer),
-                    post=extend_schema(summary="Update user data", request=spectacular_serializers.UserDataSerializer))
+                    post=extend_schema(summary="Update user data",
+                                       request=spectacular_serializers.UserDataSerializer,
+                                       examples=[OpenApiExample(
+                                           name="Example request body",
+                                           value={
+                                               "first_name": "Luke",
+                                               "last_name": "Skyworker",
+                                               "username": "LSkyworker-2024",
+                                               "email": "user@example.com",
+                                               "password": "secretpass",
+                                               "company": "Dream-team Ltd",
+                                               "position": "Boss"
+                                           },
+                                           description="Neither field is required."
+                                       )]))
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -643,10 +671,16 @@ class PartnerOrders(APIView):
                                        request=spectacular_serializers.ContactSerializer,
                                        examples=[OpenApiExample("Request example",
                                                                 value={
-                                                                    "city": "Suncity",
-                                                                    "street": "Moonstreet",
-                                                                    "phone": "+0001112223344",
-                                                                })]),
+                                                                    "city": "Test city",
+                                                                    "street": "Test street",
+                                                                    "house": "4",
+                                                                    "structure": "3",
+                                                                    "building": "2",
+                                                                    "apartment": "1",
+                                                                    "phone": "+01112223344"
+                                                                },
+                                                                description='Only "city", "street" and "phone" values '
+                                                                            'are required.')]),
                     delete=extend_schema(summary="Delete the contact of the authenticated user",
                                          parameters=[OpenApiParameter(name="contact_ids",
                                                                       type=OpenApiTypes.STR,

@@ -5,12 +5,15 @@ import backend.serializers
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
 
 
-class RegisterAccountSerializer(backend.serializers.RegisterAccountSerializer):
+class RegisterAccountSerializer(serializers.Serializer):
     type = serializers.ChoiceField(backend.models.USER_TYPE_CHOICES, required=True)
-
-    class Meta:
-        model = User
-        fields = ('type', 'first_name', 'last_name', 'email', 'password', 'company', 'position')
+    first_name = serializers.CharField(source="User.first_name", required=True)
+    last_name = serializers.CharField(source="User.last_name", required=True)
+    username = serializers.CharField(source="User.username", required=False)
+    email = serializers.CharField(source="User.email", required=True)
+    password = serializers.CharField(source="User.password", required=True)
+    company = serializers.CharField(source="User.company", required=True)
+    position = serializers.CharField(source="User.position", required=True)
 
 
 class ConfirmAccountSerializer(serializers.Serializer):
@@ -21,6 +24,7 @@ class ConfirmAccountSerializer(serializers.Serializer):
 class UserDataSerializer(serializers.Serializer):
     first_name = serializers.CharField(source="User.first_name", required=False)
     last_name = serializers.CharField(source="User.last_name", required=False)
+    username = serializers.CharField(source="User.username", required=False)
     password = serializers.CharField(source="User.password", required=False)
     email = serializers.EmailField(source="User.email", required=False)
     company = serializers.CharField(source="User.company", required=False)

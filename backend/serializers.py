@@ -19,7 +19,7 @@ class RegisterAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'type', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts')
+        fields = ('id', 'type', 'first_name', 'last_name', 'username', 'email', 'company', 'position', 'contacts')
         read_only_fields = ('id',)
 
 
@@ -28,7 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts')
+        fields = ('id', 'first_name', 'last_name', 'username', 'email', 'company', 'position', 'contacts')
         read_only_fields = ('id',)
 
 
