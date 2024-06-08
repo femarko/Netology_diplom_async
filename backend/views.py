@@ -11,7 +11,8 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
-from rest_framework import serializers, status
+from rest_framework import serializers
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -278,10 +279,12 @@ class ShopView(ListAPIView):
 @extend_schema(tags=["shops & shopping"])
 @extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket",
                                       responses={
-                                          status.HTTP_200_OK: OrderSerializer,
-                                          status.HTTP_403_FORBIDDEN: OpenApiResponse(
-                                              response=inline_serializer(name="Example Value",
-                                                                         fields={"Example Value": serializers.CharField()}),
+                                          HTTP_200_OK: OrderSerializer,
+                                          HTTP_403_FORBIDDEN: OpenApiResponse(
+                                              response=inline_serializer(
+                                                  name="Example Value",
+                                                  fields={"Example Value": serializers.CharField()}
+                                              ),
                                               examples=[OpenApiExample(name="403",
                                                                        value={
                                                                            "Status": False,
@@ -299,7 +302,14 @@ class ShopView(ListAPIView):
                                     "items": [{"product_info": 1, "quantity": 3}, {"product_info": 2, "quantity": 5}]
                                 }
                             ),
-                        ]),
+                        ],
+                        responses={
+                            HTTP_200_OK: OpenApiResponse(
+                                response=inline_serializer(name="Example value", fields={
+                                    "Example value": serializers.CharField()}),
+                                examples=[OpenApiExample(name="200", value={"Status": True, "Создано объектов": 3})]
+                            )
+                        }),
                     put=extend_schema(summary="Update the quantity of an item in the user's basket",
                                       request=spectacular_serializers.OrderItemSerializer,
                                       examples=[OpenApiExample(
