@@ -1,7 +1,8 @@
 from distutils.util import strtobool
 
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, inline_serializer, OpenApiExample
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, inline_serializer, \
+    OpenApiExample, OpenApiResponse, OpenApiRequest
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
@@ -10,7 +11,7 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -275,7 +276,19 @@ class ShopView(ListAPIView):
 
 
 @extend_schema(tags=["shops & shopping"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket"),
+@extend_schema_view(get=extend_schema(summary="Retrieve the items in the user's basket",
+                                      responses={
+                                          status.HTTP_200_OK: OrderSerializer,
+                                          status.HTTP_403_FORBIDDEN: OpenApiResponse(
+                                              response=inline_serializer(name="Example Value",
+                                                                         fields={"Example Value": serializers.CharField()}),
+                                              examples=[OpenApiExample(name="403",
+                                                                       value={
+                                                                           "Status": False,
+                                                                           "Error": "Log in required"
+                                                                       })]
+                                          )
+                                      }),
                     post=extend_schema(
                         summary="Add an item to the user's basket",
                         request=spectacular_serializers.OrderItemSerializer,
