@@ -282,32 +282,72 @@ class ShopView(ListAPIView):
                                           HTTP_200_OK: OrderSerializer,
                                           HTTP_403_FORBIDDEN: OpenApiResponse(
                                               response=inline_serializer(
-                                                  name="Example Value",
-                                                  fields={"Example Value": serializers.CharField()}
+                                                  name="Basket.get_403",
+                                                  fields={"Basket.get_403_fields": serializers.CharField()}
                                               ),
-                                              examples=[OpenApiExample(name="403",
+                                              examples=[OpenApiExample(name="Basket.get_403",
                                                                        value={
-                                                                           "Status": False,
-                                                                           "Error": "Log in required"
+                                                                           "Status": False, "Error": "Log in required"
                                                                        })]
                                           )
                                       }),
                     post=extend_schema(
                         summary="Add an item to the user's basket",
-                        request=spectacular_serializers.OrderItemSerializer,
-                        examples=[
-                            OpenApiExample(
-                                name="Request body example",
-                                value={
-                                    "items": [{"product_info": 1, "quantity": 3}, {"product_info": 2, "quantity": 5}]
-                                }
-                            ),
-                        ],
+                        request=OpenApiRequest(request=spectacular_serializers.OrderItemSerializer,
+                                               examples=[
+                                                   OpenApiExample(
+                                                       name="Request body example",
+                                                       value={
+                                                           "items": [{"product_info": 1, "quantity": 3},
+                                                                     {"product_info": 2, "quantity": 5}]
+                                                       }
+                                                   ),
+                                               ],
+                                               ),
                         responses={
                             HTTP_200_OK: OpenApiResponse(
-                                response=inline_serializer(name="Example value", fields={
-                                    "Example value": serializers.CharField()}),
-                                examples=[OpenApiExample(name="200", value={"Status": True, "Создано объектов": 3})]
+                                response=inline_serializer(name="Basket.post_200",
+                                                           fields={"Basket.post_200_fields": serializers.CharField()}),
+                                description="OK",
+                                examples=[OpenApiExample(name="Status: True",
+                                                         value={"Status": True, "Number of objects created": 3}),
+                                          OpenApiExample(name="Serializer error",
+                                                         value={
+                                                             "Status": False,
+                                                             "Errors": {"product_info": [
+                                                                 "Invalid pk \"1\" - object does not exist."]}
+                                                         }),
+                                          OpenApiExample(
+                                              name="Integrity error",
+                                              value={
+                                                  "Status": False,
+                                                  "Errors": "duplicate key value violates unique "
+                                                            "constraint \"unique_order_item\"\nDETAIL:  "
+                                                            "Key (order_id, product_info_id)=(1, 1) already exists.\n"
+                                              }),
+                                          OpenApiExample(
+                                              name="Required arguments",
+                                              value={'Status': False, 'Error': 'Not all required arguments provided'}
+                                          )]),
+                            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                                response=inline_serializer(name="Basket.post_400",
+                                                           fields={"Basket.post_400_fields": serializers.CharField()}),
+                                description="Bad request",
+                                examples=[
+                                    OpenApiExample(
+                                        name="Wrong request format",
+                                        value={'Status': False, 'Error': 'Wrong request format'}
+                                    ),
+                                ]
+                            ),
+                            HTTP_403_FORBIDDEN: OpenApiResponse(
+                                response=inline_serializer(name="Basket.post_403",
+                                                           fields={"Basket.post_403_fields": serializers.CharField()}),
+                                description="Forbidden",
+                                examples=[
+                                    OpenApiExample(
+                                        name="Log in required", value={'Status': False, 'Error': 'Log in required'}),
+                                ]
                             )
                         }),
                     put=extend_schema(summary="Update the quantity of an item in the user's basket",
@@ -389,7 +429,7 @@ class BasketView(APIView):
                 try:
                     items_dict = load_json(items_sting)
                 except ValueError:
-                    return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
+                    return JsonResponse({'Status': False, 'Errors': 'Wrong request format'}) # todo: that was code for non-json requests only?
                 # else:
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
             objects_created = 0
@@ -408,8 +448,8 @@ class BasketView(APIView):
 
                     return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
-            return JsonResponse({'Status': True, 'Создано объектов': objects_created})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+            return JsonResponse({'Status': True, 'Number of objects created': objects_created})
+        return JsonResponse({'Status': False, 'Errors': 'Not all required arguments provided'})
 
     # удалить товары из корзины
     def delete(self, request, *args, **kwargs):
