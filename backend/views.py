@@ -3,6 +3,7 @@ from distutils.util import strtobool
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, inline_serializer, \
     OpenApiExample, OpenApiResponse, OpenApiRequest
+from rest_framework.exceptions import ParseError
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
@@ -383,6 +384,30 @@ class BasketView(APIView):
     Attributes:
     - None
     """
+    def get_items_list(self, request: Request, *args, **kwargs) -> [list[dict[str, [int | str]]] | JsonResponse]:
+
+        if request.content_type == "application/json":
+            try:
+                request_data: Request.data = request.data
+            except ParseError:
+                return JsonResponse({'Status': False, 'Errors': 'The provided data does not conform to the required '
+                                                                'format'},
+                                    status=400)
+            try:
+                items_list: list[dict[str, [int | str]]] = request_data["items"]
+            except KeyError:
+                return JsonResponse({'Status': False, 'Errors': 'Field "items" is required'}, status=400)
+            return items_list
+        else:
+            try:
+                items_list: list[dict[str, [int | str]]] = load_json(request.data.get("items"))
+            except:
+                return JsonResponse({'Status': False, 'Errors': 'The provided data does not conform to the required '
+                                                                'format'},
+                                    status=400)
+            else:
+                return items_list
+
 
     # получить корзину
     def get(self, request, *args, **kwargs):
@@ -420,36 +445,28 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        items_sting = request.data.get('items')
-        if items_sting:
-            content_type = request.headers.get("Content-Type")
-            if content_type == "application/json":
-                items_dict = items_sting
-            else:
+        get_items_list_result = self.get_items_list(request)
+
+        if type(get_items_list_result) == JsonResponse:
+            return get_items_list_result
+
+        items_list: list[dict[str, [int | str]]] = get_items_list_result
+        basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+        objects_created = 0
+        for order_item in items_list:
+            order_item.update({'order': basket.id})
+            serializer = OrderItemSerializer(data=order_item)
+            if serializer.is_valid():
                 try:
-                    items_dict = load_json(items_sting)
-                except ValueError:
-                    return JsonResponse({'Status': False, 'Errors': 'Wrong request format'}) # todo: that was code for non-json requests only?
-                # else:
-            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
-            objects_created = 0
-            for order_item in items_dict:
-                order_item.update({'order': basket.id})
-                serializer = OrderItemSerializer(data=order_item)
-                if serializer.is_valid():
-                    try:
-                        serializer.save()
-                    except IntegrityError as error:
-                        return JsonResponse({'Status': False, 'Errors': str(error)})
-                    else:
-                        objects_created += 1
-
+                    serializer.save()
+                except IntegrityError as error:
+                    return JsonResponse({'Status': False, 'Errors': str(error)}, status=400)
                 else:
+                    objects_created += 1
+            else:
+                return JsonResponse({'Status': False, 'Errors': serializer.errors}, status=400)
+        return JsonResponse({'Status': True, 'Number of objects created': objects_created}, status=200)
 
-                    return JsonResponse({'Status': False, 'Errors': serializer.errors})
-
-            return JsonResponse({'Status': True, 'Number of objects created': objects_created})
-        return JsonResponse({'Status': False, 'Errors': 'Not all required arguments provided'})
 
     # удалить товары из корзины
     def delete(self, request, *args, **kwargs):
