@@ -72,3 +72,8 @@ class OrderItemSerializer(serializers.Serializer):
 class OrderSerializer(serializers.Serializer):
     order_id = serializers.CharField(source="Order.pk")
     contact_id = serializers.CharField(source="Contact.pk")
+
+
+class ResponseSerializer(serializers.Serializer):
+    status = serializers.IntegerField()
+    details = serializers.CharField()

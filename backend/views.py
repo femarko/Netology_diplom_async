@@ -3,8 +3,7 @@ from distutils.util import strtobool
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, inline_serializer, \
     OpenApiExample, OpenApiResponse, OpenApiRequest
-from rest_framework.exceptions import ParseError
-from rest_framework.request import Request
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -12,13 +11,18 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
+
 from rest_framework import serializers
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, HTTP_500_INTERNAL_SERVER_ERROR
+from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, \
+    HTTP_500_INTERNAL_SERVER_ERROR
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from ujson import loads as load_json
+from rest_framework.exceptions import ParseError
+from rest_framework.request import Request
+
+from ujson import loads as load_json, JSONDecodeError
 
 from celery.result import AsyncResult
 
@@ -199,7 +203,6 @@ class AccountDetails(APIView):
         if not set(request.data.keys()).issubset(available_fields):
             return JsonResponse({'Status': False, 'Error': 'Wrong field name (names)'}, status=400)
 
-
         # проверяем обязательные аргументы
 
         if 'password' in request.data:
@@ -324,255 +327,6 @@ class ProductInfoView(APIView):
         return Response(serializer.data)
 
 
-@extend_schema(tags=["shops & shopping"])
-@extend_schema_view(
-    get=extend_schema(
-        summary="Retrieve the items in the user's basket",
-        responses={
-            HTTP_200_OK: OrderSerializer,
-            HTTP_403_FORBIDDEN: OpenApiResponse(
-                response=inline_serializer(name="Basket.get_403",
-                                           fields={"Basket.get_403_fields": serializers.CharField()}),
-                description="Forbidden",
-                examples=[OpenApiExample(name="Log in required", value={"Status": False, "Error": "Log in required"})]
-            )
-        }
-    ),
-    post=extend_schema(
-        summary="Add an item to the user's basket",
-        request=OpenApiRequest(
-            request=spectacular_serializers.OrderItemSerializer,
-            examples=[
-                OpenApiExample(
-                    name="Request body example",
-                    value={"items": [{"product_info": 1, "quantity": 3}, {"product_info": 2, "quantity": 5}]}
-                ),
-            ],
-        ),
-        responses={
-            HTTP_200_OK: OpenApiResponse(
-                response=inline_serializer(name="Basket.post_200",
-                                           fields={"Basket.post_200_fields": serializers.CharField()}),
-                description="OK",
-                examples=[OpenApiExample(name="Status: True", value={"Status": True, "Number of objects created": 3})]
-            ),
-            HTTP_400_BAD_REQUEST: OpenApiResponse(
-                response=inline_serializer(name="Basket.post_400",
-                                           fields={"Basket.post_400_fields": serializers.CharField()}),
-                description="Bad request",
-                examples=[
-                    OpenApiExample(name="Malformed request data",
-                                   value={
-                                       'Status': False,
-                                       'Errors': 'The provided data does not conform to the required format'
-                                   }),
-                    OpenApiExample(name='KeyError: "items" key is required',
-                                   value={'Status': False, 'Errors': 'Field "items" is required'}),
-                    OpenApiExample(name="Integrity error",
-                                   value={"Status": False, "Errors": "duplicate key value violates unique "
-                                                                     "constraint \"unique_order_item\"\nDETAIL:  "
-                                                                     "Key (order_id, product_info_id)=(1, 1) "
-                                                                     "already exists.\n"}),
-                    OpenApiExample(name="Serializer error",
-                                   value={
-                                       "Status": False,
-                                       "Errors": {"product_info": ["Invalid pk \"1\" - object does not exist."]}
-                                   }),
-    ]
-            ),
-            HTTP_403_FORBIDDEN: OpenApiResponse(
-                response=inline_serializer(name="Basket.post_403",
-                                           fields={"Basket.post_403_fields": serializers.CharField()}),
-                description="Forbidden",
-                examples=[
-                    OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})
-                ]
-            )
-        }
-    ),
-    put=extend_schema(summary="Update the quantity of an item in the user's basket",
-                      request=spectacular_serializers.OrderItemSerializer,
-                      examples=[
-                          OpenApiExample(
-                              name="Request body example",
-                              value={"items": [{"id": 90, "quantity": 2}, {"id": 91, "quantity": 3}]}
-                          )
-                      ]),
-    delete=extend_schema(summary="Remove an item from the user's basket",
-                         parameters=[
-                             OpenApiParameter(
-                                 name="order_item_ids",
-                                 location=OpenApiParameter.QUERY,
-                                 description="Coma-separated set of order items IDs / Single order item ID",
-                                 examples=[OpenApiExample(name="Example value", value="1,2,3")]
-                             )
-                         ])
-)
-class BasketView(APIView):
-    """
-    A class for managing the user's shopping basket.
-
-    Methods:
-    - get: Retrieve the items in the user's basket.
-    - post: Add an item to the user's basket.
-    - put: Update the quantity of an item in the user's basket.
-    - delete: Remove an item from the user's basket.
-
-    Attributes:
-    - None
-    """
-    def get_items_list(self, request: Request, *args, **kwargs) -> [list[dict[str, [int | str]]] | JsonResponse]:
-
-        if request.content_type == "application/json":
-            try:
-                request_data: Request.data = request.data
-            except ParseError:
-                return JsonResponse(
-                    {'Status': False, 'Errors': 'The provided data does not conform to the required format'},
-                    status=400
-                )
-            try:
-                items_list: list[dict[str, [int | str]]] = request_data["items"]
-            except KeyError:
-                return JsonResponse({'Status': False, 'Errors': 'Field "items" is required'}, status=400)
-            return items_list
-        else:
-            try:
-                items_list: list[dict[str, [int | str]]] = load_json(request.data.get("items"))
-            except:
-                return JsonResponse({'Status': False, 'Errors': 'The provided data does not conform to the required '
-                                                                'format'},
-                                    status=400)
-            else:
-                return items_list
-
-
-    # получить корзину
-    def get(self, request, *args, **kwargs):
-        """
-                Retrieve the items in the user's basket.
-
-                Args:
-                - request (Request): The Django request object.
-
-                Returns:
-                - Response: The response containing the items in the user's basket.
-                """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        basket = Order.objects.filter(
-            user_id=request.user.id, state='basket').prefetch_related(
-            'ordered_items__product_info__product__category',
-            'ordered_items__product_info__product_parameters__parameter').annotate(
-            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
-
-        serializer = OrderSerializer(basket, many=True)
-        return Response(serializer.data)
-
-    # редактировать корзину
-    def post(self, request, *args, **kwargs):
-        """
-               Add an items to the user's basket.
-
-               Args:
-               - request (Request): The Django request object.
-
-               Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
-               """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        get_items_list_result = self.get_items_list(request)
-
-        if type(get_items_list_result) == JsonResponse:
-            return get_items_list_result
-
-        items_list: list[dict[str, [int | str]]] = get_items_list_result
-        basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
-        objects_created = 0
-        for order_item in items_list:
-            order_item.update({'order': basket.id})
-            serializer = OrderItemSerializer(data=order_item)
-            if serializer.is_valid():
-                try:
-                    serializer.save()
-                except IntegrityError as error:
-                    return JsonResponse({'Status': False, 'Errors': str(error)}, status=400)
-                else:
-                    objects_created += 1
-            else:
-                return JsonResponse({'Status': False, 'Errors': serializer.errors}, status=400)
-        return JsonResponse({'Status': True, 'Number of objects created': objects_created}, status=200)
-
-
-    # удалить товары из корзины
-    def delete(self, request, *args, **kwargs):
-        """
-                Remove  items from the user's basket.
-
-                Args:
-                - request (Request): The Django request object.
-
-                Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
-                """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        # items_sting = request.data.get('items')
-        items_sting = request.query_params.get('order_item_ids')
-        if items_sting:
-            items_list = items_sting.split(',')
-            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
-            query = Q()
-            objects_deleted = False
-            for order_item_id in items_list:
-                if order_item_id.isdigit():
-                    query = query | Q(order_id=basket.id, id=order_item_id)
-                    objects_deleted = True
-
-            if objects_deleted:
-                deleted_count = OrderItem.objects.filter(query).delete()[0]
-                return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-
-    # добавить позиции в корзину
-    def put(self, request, *args, **kwargs):
-        """
-               Update the items in the user's basket.
-
-               Args:
-               - request (Request): The Django request object.
-
-               Returns:
-               - JsonResponse: The response indicating the status of the operation and any errors.
-               """
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        items_sting = request.data.get('items')
-        if items_sting:
-            content_type = request.headers.get("Content-Type")
-            if content_type == "application/json":
-                items_dict = items_sting
-            else:
-                try:
-                    items_dict = load_json(items_sting)
-                except ValueError:
-                    return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
-            # else:
-            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
-            objects_updated = 0
-            for order_item in items_dict:
-                if type(order_item['id']) == int and type(order_item['quantity']) == int:
-                    objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item['id']).update(
-                        quantity=order_item['quantity'])
-
-            return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
-
-
 @extend_schema(tags=["partners"])
 @extend_schema_view(post=extend_schema(summary="Update the partner information",
                                        request=spectacular_serializers.PartnerUpdateSerializer))
@@ -621,6 +375,323 @@ class PartnerUpdate(APIView):
                 else:
                     return JsonResponse({'task_id': task_id})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+@extend_schema(tags=["shops & shopping"])
+class BasketView(APIView):
+    """
+    A class for managing the user's shopping basket.
+
+    Methods:
+    - get: Retrieve the items in the user's basket.
+    - post: Add an item to the user's basket.
+    - put: Update the quantity of an item in the user's basket.
+    - delete: Remove an item from the user's basket.
+
+    Attributes:
+    - None
+    """
+
+    def get_items_list(self, request: Request, *args, **kwargs) -> [list[dict[str, [int | str]]] | JsonResponse]:
+        """
+        Check request body data
+        """
+
+        if request.content_type == "application/json":
+            try:
+                request_data: Request.data = request.data
+            except ParseError as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+            try:
+                list_of_items_dicts: list[dict[str, [int | str]]] = request_data["items"]
+            except KeyError as err:
+                return JsonResponse({'Status': False, 'Errors': f"The required key {str(err)} is not provided"},
+                                    status=400)
+            errors_list: list = []
+            wrong_keys_list: list = []
+            wrong_valueslist: list = []
+            for items_dict in list_of_items_dicts:
+                for key, value in items_dict.items():
+                    if key not in args:
+                        wrong_keys_list.append(key)
+                    if type(value) is str and not value.isdigit():
+                        wrong_valueslist.append(value)
+            if wrong_keys_list:
+                errors_list.append(f'Wrong keys: {wrong_keys_list}. Required keys are: {args}')
+            if wrong_valueslist:
+                errors_list.append(f'Wrong values: {wrong_valueslist}. Required values must be integers '
+                                   f'or a string format digits')
+            if errors_list:
+                return JsonResponse({'Status': False, 'Errors': errors_list}, status=400)
+            return list_of_items_dicts
+        else:
+            try:
+                list_of_items_dicts: list[dict[str, [int | str]]] = load_json(request.data.get("items"))
+            except JSONDecodeError as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+            else:
+                return list_of_items_dicts
+
+    # получить корзину
+    @extend_schema(
+        summary="Retrieve the items in the user's basket",
+        responses={
+            HTTP_200_OK: OpenApiResponse(response=OrderSerializer, description="Success"),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Forbidden",
+                examples=[OpenApiExample(name="Log in required", value={"Status": False, "Error": "Log in required"})]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        """
+                Retrieve the items in the user's basket.
+
+                Args:
+                - request (Request): The Django request object.
+
+                Returns:
+                - Response: The response containing the items in the user's basket.
+                """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        basket = Order.objects.filter(
+            user_id=request.user.id, state='basket').prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+
+        serializer = OrderSerializer(basket, many=True)
+        return Response(serializer.data)
+
+    # редактировать корзину
+    @extend_schema(
+        summary="Add an item to the user's basket",
+        request=OpenApiRequest(
+            request=spectacular_serializers.OrderItemSerializer,
+            examples=[
+                OpenApiExample(
+                    name="Request body example",
+                    value={"items": [{"product_info": 1, "quantity": 3}, {"product_info": 2, "quantity": 5}]}
+                ),
+            ],
+        ),
+        responses={
+            HTTP_201_CREATED: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Created",
+                examples=[OpenApiExample(name="Status: True", value={"Status": True, "Number of objects created": 3})]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Bad request",
+                examples=[
+                    OpenApiExample(name="ParseError",
+                                   value={
+                                       'Status': False,
+                                       'Errors': 'JSON parse error - Expecting value: line 4 column 23 (char 43)'
+                                   }),
+                    OpenApiExample(name='Key "items" is required',
+                                   value={'Status': False, 'Errors': "The required key 'items' is not provided"}),
+                    OpenApiExample(
+                        name="Wrong keys or values",
+                        value={
+                            "Status": False,
+                            "Errors": [
+                                "Wrong keys: ['product_inf']. Required keys are: ('product_info', 'quantity')",
+                                "Wrong values: ['abc']. Required values must be integers or a string format digits"
+                            ]
+                        }
+                    ),
+                    OpenApiExample(name="JSONDecodeError",
+                                   value={'Status': False, 'Errors': 'Expected object or value'}),
+                    OpenApiExample(name="Integrity error",
+                                   value={"Status": False, "Errors": "duplicate key value violates unique "
+                                                                     "constraint \"unique_order_item\"\nDETAIL:  "
+                                                                     "Key (order_id, product_info_id)=(1, 1) "
+                                                                     "already exists.\n"}),
+                    OpenApiExample(
+                        name="Serializer error",
+                        value={
+                            "Status": False,
+                            "Errors": "{'product_info': [ErrorDetail(string='Incorrect type. Expected pk value, "
+                                      "received str.', code='incorrect_type')]}"
+                        }
+                    ),
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Forbidden",
+                examples=[
+                    OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        """
+               Add an items to the user's basket.
+
+               Args:
+               - request (Request): The Django request object.
+
+               Returns:
+               - JsonResponse: The response indicating the status of the operation and any errors.
+               """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        required_keys_in_request_body: tuple = ("product_info", "quantity")
+        get_items_list_result: [list[dict[str, [int | str]]] | JsonResponse] = self.get_items_list(
+            request, *required_keys_in_request_body
+        )
+        if type(get_items_list_result) == JsonResponse:
+            return get_items_list_result
+
+        items_list: list[dict[str, [int | str]]] = get_items_list_result
+        basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+        objects_created = 0
+        for order_item in items_list:
+            order_item.update({'order': basket.id})
+            serializer = OrderItemSerializer(data=order_item)
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                except IntegrityError as err:
+                    return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+                else:
+                    objects_created += 1
+            else:
+                return JsonResponse({'Status': False, 'Errors': str(serializer.errors)}, status=400)
+        return JsonResponse({'Status': True, 'Number of objects created': objects_created}, status=201)
+
+    # удалить товары из корзины
+    @extend_schema(
+        summary="Remove an item from the user's basket",
+        parameters=[
+            OpenApiParameter(
+                name="order_item_ids",
+                location=OpenApiParameter.QUERY,
+                description="Coma-separated set of order items IDs / Single order item ID",
+                examples=[OpenApiExample(name="Example value", value="1,2,3")]
+            )
+        ]
+    )
+    def delete(self, request, *args, **kwargs):
+        """
+                Remove  items from the user's basket.
+
+                Args:
+                - request (Request): The Django request object.
+
+                Returns:
+                - JsonResponse: The response indicating the status of the operation and any errors.
+                """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        # items_sting = request.data.get('items')
+        items_sting = request.query_params.get('order_item_ids')
+        if items_sting:
+            items_list = items_sting.split(',')
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+            query = Q()
+            objects_deleted = False
+            for order_item_id in items_list:
+                if order_item_id.isdigit():
+                    query = query | Q(order_id=basket.id, id=order_item_id)
+                    objects_deleted = True
+
+            if objects_deleted:
+                deleted_count = OrderItem.objects.filter(query).delete()[0]
+                return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+    # добавить позиции в корзину
+    @extend_schema(
+        summary="Update the quantity of an item in the user's basket",
+        request=OpenApiRequest(
+            request=spectacular_serializers.OrderItemSerializer,
+            examples=[
+                OpenApiExample(name="Request body example",
+                               value={"items": [{"id": 90, "quantity": 2}, {"id": 91, "quantity": 3}]})
+            ]
+        ),
+        responses={
+            HTTP_201_CREATED: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                # response=inline_serializer(name="Basket.put_201",
+                #                            fields={"Basket.put_201_fields": serializers.CharField()}),
+                description="Success",
+                examples=[
+                    OpenApiExample(name="Status: True", value={'Status': True, 'Number of objects updated': 2}),
+                ]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                # response=inline_serializer(name="Basket.put_400",
+                #                            fields={"Basket.put_400_fields": serializers.CharField()}),
+                description="Bad request",
+                examples=[
+                    OpenApiExample(name="Malformed data syntax",
+                                   value={'Status': False, 'Errors': 'Malformed data syntax'}),
+                    OpenApiExample(name='Key "items" is required',
+                                   value={'Status': False, 'Errors': 'Key "items" is required'}),
+                    OpenApiExample(
+                        name="Wrong keys or values",
+                        value={
+                            "Status": False,
+                            "Errors": [
+                                "Malformed keys: ['i']. Required keys are: ('id', 'quantity')",
+                                "Values provided: ['two']. Required values must be integers or a string format digits"
+                            ]
+                        }
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                # response=inline_serializer(name="Basket.put_403",
+                #                            fields={"Basket.put_403_fields": serializers.CharField()}),
+                description="Forbidden",
+                examples=[OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
+    def put(self, request, *args, **kwargs):
+        """
+               Update the items in the user's basket.
+
+               Args:
+               - request (Request): The Django request object.
+
+               Returns:
+               - JsonResponse: The response indicating the status of the operation and any errors.
+               """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        required_keys_in_request_body: tuple = ("id", "quantity")
+        get_items_list_result: [list[dict[str, [int | str]]] | JsonResponse] = \
+        self.get_items_list(request, *required_keys_in_request_body)
+        if type(get_items_list_result) == JsonResponse:
+            return get_items_list_result
+
+        items_list: list[dict[str, [int | str]]] = get_items_list_result
+        basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+        objects_updated = 0
+        for order_item in items_list:
+            objects_updated += OrderItem.objects.filter(order_id=basket.id, id=int(order_item.get('id'))).update(
+                quantity=int(order_item.get('quantity')))
+        return JsonResponse({'Status': True, 'Number of objects updated': objects_updated}, status=201)
 
 
 @extend_schema(tags=["partners"])
