@@ -626,8 +626,6 @@ class BasketView(APIView):
         responses={
             HTTP_201_CREATED: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                # response=inline_serializer(name="Basket.put_201",
-                #                            fields={"Basket.put_201_fields": serializers.CharField()}),
                 description="Success",
                 examples=[
                     OpenApiExample(name="Status: True", value={'Status': True, 'Number of objects updated': 2}),
@@ -635,30 +633,32 @@ class BasketView(APIView):
             ),
             HTTP_400_BAD_REQUEST: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                # response=inline_serializer(name="Basket.put_400",
-                #                            fields={"Basket.put_400_fields": serializers.CharField()}),
                 description="Bad request",
                 examples=[
-                    OpenApiExample(name="Malformed data syntax",
-                                   value={'Status': False, 'Errors': 'Malformed data syntax'}),
+                    OpenApiExample(name="ParseError",
+                                   value={
+                                       'Status': False,
+                                       'Errors': 'JSON parse error - Expecting value: line 4 column 13 (char 33)'
+                                   }),
                     OpenApiExample(name='Key "items" is required',
-                                   value={'Status': False, 'Errors': 'Key "items" is required'}),
+                                   value={'Status': False, 'Errors': "The required key 'items' is not provided"}),
                     OpenApiExample(
                         name="Wrong keys or values",
                         value={
                             "Status": False,
                             "Errors": [
-                                "Malformed keys: ['i']. Required keys are: ('id', 'quantity')",
-                                "Values provided: ['two']. Required values must be integers or a string format digits"
+                                "Wrong keys: ['quantit']. Required keys are: ('id', 'quantity')",
+                                "Wrong values: ['abc']. Required values must be integers or a string format digits"
                             ]
                         }
-                    )
+                    ),
+                    OpenApiExample(name="JSONDecodeError",
+                                   value={'Status': False, 'Errors': 'Expected object or value'}),
+
                 ]
             ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                # response=inline_serializer(name="Basket.put_403",
-                #                            fields={"Basket.put_403_fields": serializers.CharField()}),
                 description="Forbidden",
                 examples=[OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})]
             ),
