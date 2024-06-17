@@ -487,7 +487,7 @@ class BasketView(APIView):
             ),
             HTTP_400_BAD_REQUEST: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                description="Bad request",
+                description="Error: Bad Request",
                 examples=[
                     OpenApiExample(name="ParseError",
                                    value={
@@ -525,7 +525,7 @@ class BasketView(APIView):
             ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                description="Forbidden",
+                description="Error: Forbidden",
                 examples=[
                     OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})
                 ]
@@ -571,7 +571,6 @@ class BasketView(APIView):
                 return JsonResponse({'Status': False, 'Errors': str(serializer.errors)}, status=400)
         return JsonResponse({'Status': True, 'Number of objects created': objects_created}, status=201)
 
-    # удалить товары из корзины
     @extend_schema(
         summary="Remove an item from the user's basket",
         parameters=[
@@ -580,8 +579,34 @@ class BasketView(APIView):
                 location=OpenApiParameter.QUERY,
                 description="Coma-separated set of order items IDs / Single order item ID",
                 examples=[OpenApiExample(name="Example value", value="1,2,3")]
-            )
-        ]
+            ),
+        ],
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                examples=[OpenApiExample(name="Success", value={'Status': True, 'Number of objects deleted': 1})]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad Request',
+                examples=[
+                    OpenApiExample(
+                        name='No required argument',
+                        value={'Status': False, 'Errors': "Query parameter 'order_item_ids' is required"})
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(
+                        name='Log in required',
+                        value={'Status': False, 'Error': 'Log in required'})
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
     )
     def delete(self, request, *args, **kwargs):
         """
@@ -596,10 +621,9 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        # items_sting = request.data.get('items')
         items_sting = request.query_params.get('order_item_ids')
         if items_sting:
-            items_list = items_sting.split(',')
+            items_list: list[str] = items_sting.split(',')
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
             query = Q()
             objects_deleted = False
@@ -610,10 +634,9 @@ class BasketView(APIView):
 
             if objects_deleted:
                 deleted_count = OrderItem.objects.filter(query).delete()[0]
-                return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                return JsonResponse({'Status': True, 'Number of objects deleted': deleted_count})
+        return JsonResponse({'Status': False, 'Errors': 'Query parameter "order_item_ids" is required'}, status=400)
 
-    # добавить позиции в корзину
     @extend_schema(
         summary="Update the quantity of an item in the user's basket",
         request=OpenApiRequest(
@@ -633,7 +656,7 @@ class BasketView(APIView):
             ),
             HTTP_400_BAD_REQUEST: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                description="Bad request",
+                description="Error: Bad Request",
                 examples=[
                     OpenApiExample(name="ParseError",
                                    value={
@@ -659,7 +682,7 @@ class BasketView(APIView):
             ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                description="Forbidden",
+                description="Error: Forbidden",
                 examples=[OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})]
             ),
             HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
