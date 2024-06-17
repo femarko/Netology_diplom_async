@@ -718,7 +718,7 @@ class BasketView(APIView):
 
 
 @extend_schema(tags=["partners"])
-@extend_schema_view(get=extend_schema(summary="Partners's price-list update task status"))
+@extend_schema_view(get=extend_schema(summary="Partners' price-list update task status"))
 class PartnerUpdateTaskStatus(APIView):
     '''The celery-task status is represented as a response of a get-request to a specific url'''
 
