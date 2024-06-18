@@ -1000,13 +1000,6 @@ class ContactView(APIView):
 
 
 @extend_schema(tags=["shops & shopping"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the details of a specific order"),
-                    post=extend_schema(summary="Create a new order",
-                                       request=spectacular_serializers.OrderSerializer,
-                                       examples=[OpenApiExample(name="Example request body",
-                                                                value={"order_id": "3", "contact_id": "2"})]),
-                    put=extend_schema(summary="Update the details of a specific order"),
-                    delete=extend_schema(summary="Delete a specific order"))
 class OrderView(APIView):
     """
     Класс для получения и размешения заказов пользователями
@@ -1019,6 +1012,92 @@ class OrderView(APIView):
     """
 
     # получить мои заказы
+    @extend_schema(
+        summary="Retrieve the details of a specific order",
+        request=OpenApiRequest(request=spectacular_serializers.OrderSerializer),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="OK",
+                examples=[
+                    OpenApiExample(
+                        name="Status: True",
+                        value=[
+                            {
+                                "id": 3,
+                                "ordered_items": [
+                                    {
+                                        "id": 53,
+                                        "product_info": {
+                                            "id": 1,
+                                            "model": "apple/iphone/xs-max",
+                                            "product": {
+                                                "name": "Смартфон Apple iPhone XS Max 512GB (золотистый)",
+                                                "category": "Смартфоны"
+                                            },
+                                            "shop": 1,
+                                            "quantity": 14,
+                                            "price": 110000,
+                                            "price_rrc": 116990,
+                                            "product_parameters": [
+                                                {"parameter": "Диагональ (дюйм)", "value": "6.5"},
+                                                {"parameter": "Разрешение (пикс)", "value": "2688x1242"},
+                                                {"parameter": "Встроенная память (Гб)", "value": "512"},
+                                                {"parameter": "Цвет", "value": "золотистый"}
+                                            ]
+                                        },
+                                        "quantity": 3
+                                    },
+                                    {
+                                        "id": 54,
+                                        "product_info": {
+                                            "id": 2,
+                                            "model": "apple/iphone/xr",
+                                            "product": {
+                                                "name": "Смартфон Apple iPhone XR 256GB (красный)",
+                                                "category": "Смартфоны"
+                                            },
+                                            "shop": 1,
+                                            "quantity": 9,
+                                            "price": 65000,
+                                            "price_rrc": 69990,
+                                            "product_parameters": [
+                                                {"parameter": "Диагональ (дюйм)", "value": "6.1"},
+                                                {"parameter": "Разрешение (пикс)", "value": "1792x828"},
+                                                {"parameter": "Встроенная память (Гб)", "value": "256"},
+                                                {"parameter": "Цвет", "value": "красный"}
+                                            ]
+                                        },
+                                        "quantity": 5
+                                    }
+                                ],
+                                "state": "new",
+                                "dt": "2024-06-11T22:09:41.316030Z",
+                                "total_sum": 655000,
+                                "contact": {
+                                        "id": 1,
+                                        "city": "Test city",
+                                        "street": "Test street",
+                                        "house": "4",
+                                        "structure": "3",
+                                        "building": "2",
+                                        "apartment": "1",
+                                        "phone": "+01112223344"
+                                    }
+                            }
+                        ]
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Forbidden",
+                examples=[OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the details of user orders.
@@ -1041,6 +1120,10 @@ class OrderView(APIView):
         return Response(serializer.data)
 
     # разместить заказ из корзины
+    @extend_schema(summary="Create a new order",
+                         request=spectacular_serializers.OrderSerializer,
+                         examples=[OpenApiExample(name="Example request body",
+                                                  value={"order_id": "3", "contact_id": "2"})])
     def post(self, request, *args, **kwargs):
         """
                Put an order and send a notification.
