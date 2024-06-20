@@ -1,4 +1,5 @@
 from distutils.util import strtobool
+from typing import Mapping, Iterable, Any
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, inline_serializer, \
@@ -14,7 +15,7 @@ from django.http import JsonResponse
 
 from rest_framework import serializers
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, \
-    HTTP_500_INTERNAL_SERVER_ERROR
+    HTTP_404_NOT_FOUND, HTTP_415_UNSUPPORTED_MEDIA_TYPE, HTTP_500_INTERNAL_SERVER_ERROR
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -33,6 +34,69 @@ from backend.serializers import UserSerializer, CategorySerializer, ShopSerializ
 from backend import spectacular_serializers
 from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
+
+CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded", "multipart/form-data")
+
+
+def json_parse(request: Request) -> tuple[bool, JsonResponse | Mapping[str, str | int]]:
+    """JSON parse errors processing"""
+    try:
+        request_data_parsed: Mapping[str, str | int] = request.data
+    except ParseError as err:
+        return False, JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+    else:
+        return True, request_data_parsed
+
+
+def non_json_parse(request: Request, *args: Iterable) -> tuple[bool, JsonResponse | None]:
+    for arg in args:
+        try:
+            arg_parsed = load_json(request.data.get(arg))
+        except JSONDecodeError as err:
+            return False, JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+        else:
+            return True, None
+
+
+def validate_keys_and_values(request: Request, required_keys: str = None,
+                             data: Mapping = None,
+                             *args: Iterable,
+                             **kwargs: Mapping) -> tuple[bool, JsonResponse | None]:
+    errors_list: list[str] = []
+    missing_keys_list: list[str] = []
+    wrong_keys_list: list[str] = []
+    json_wrong_values_list: list[str] = []
+    non_json_wrong_values_list: list[str] = []
+
+    for required_key in required_keys:
+        if required_key not in kwargs.keys():
+            missing_keys_list.append(required_key)
+    for key, value in kwargs.items():
+        if request.content_type == CONTENT_TYPES[0]:
+            if key not in required_keys:
+                wrong_keys_list.append(key)
+            if type(value) is str and not value.isdigit():
+                json_wrong_values_list.append(value)
+        else:
+            for item in value:
+                if item.startswith(('"', "'")):
+                    non_json_wrong_values_list.append(value)
+
+    if missing_keys_list:
+        errors_list.append(f'The following required keys are missing: {missing_keys_list}')
+    if wrong_keys_list:
+        errors_list.append(f'Wrong keys: {wrong_keys_list}. Required keys are: {required_keys}')
+    if json_wrong_values_list:
+        errors_list.append(f'Wrong values: {json_wrong_values_list}. Required values must be integers '
+                           f'or a string format digits')
+    if non_json_wrong_values_list:
+        errors_list.append(f'Wrong values: {non_json_wrong_values_list}. Values must not start from quotes')
+
+    if errors_list:
+        return False, JsonResponse({'Status': False, 'Errors': errors_list}, status=400)
+    else:
+        return True, None
+
 
 
 @extend_schema(tags=["users"])
@@ -392,6 +456,8 @@ class BasketView(APIView):
     - None
     """
 
+    # todo: perhaps all this staff should be processed within a serializer?
+    # todo: redesign -> give back content_type check to the view.method
     def get_items_list(self, request: Request, *args, **kwargs) -> [list[dict[str, [int | str]]] | JsonResponse]:
         """
         Check request body data
@@ -409,21 +475,21 @@ class BasketView(APIView):
                                     status=400)
             errors_list: list = []
             wrong_keys_list: list = []
-            wrong_valueslist: list = []
+            wrong_values_list: list = []
             for items_dict in list_of_items_dicts:
                 for key, value in items_dict.items():
                     if key not in args:
                         wrong_keys_list.append(key)
                     if type(value) is str and not value.isdigit():
-                        wrong_valueslist.append(value)
+                        wrong_values_list.append(value)
             if wrong_keys_list:
                 errors_list.append(f'Wrong keys: {wrong_keys_list}. Required keys are: {args}')
-            if wrong_valueslist:
-                errors_list.append(f'Wrong values: {wrong_valueslist}. Required values must be integers '
+            if wrong_values_list:
+                errors_list.append(f'Wrong values: {wrong_values_list}. Required values must be integers '
                                    f'or a string format digits')
             if errors_list:
                 return JsonResponse({'Status': False, 'Errors': errors_list}, status=400)
-            return list_of_items_dicts
+            return list_of_items_dicts  # todo: it is better to return None here
         else:
             try:
                 list_of_items_dicts: list[dict[str, [int | str]]] = load_json(request.data.get("items"))
@@ -680,6 +746,7 @@ class BasketView(APIView):
 
                 ]
             ),
+
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
                 description="Error: Forbidden",
@@ -704,7 +771,7 @@ class BasketView(APIView):
 
         required_keys_in_request_body: tuple = ("id", "quantity")
         get_items_list_result: [list[dict[str, [int | str]]] | JsonResponse] = \
-        self.get_items_list(request, *required_keys_in_request_body)
+            self.get_items_list(request, *required_keys_in_request_body)
         if type(get_items_list_result) == JsonResponse:
             return get_items_list_result
 
@@ -1075,15 +1142,15 @@ class OrderView(APIView):
                                 "dt": "2024-06-11T22:09:41.316030Z",
                                 "total_sum": 655000,
                                 "contact": {
-                                        "id": 1,
-                                        "city": "Test city",
-                                        "street": "Test street",
-                                        "house": "4",
-                                        "structure": "3",
-                                        "building": "2",
-                                        "apartment": "1",
-                                        "phone": "+01112223344"
-                                    }
+                                    "id": 1,
+                                    "city": "Test city",
+                                    "street": "Test street",
+                                    "house": "4",
+                                    "structure": "3",
+                                    "building": "2",
+                                    "apartment": "1",
+                                    "phone": "+01112223344"
+                                }
                             }
                         ]
                     )
@@ -1120,10 +1187,94 @@ class OrderView(APIView):
         return Response(serializer.data)
 
     # разместить заказ из корзины
-    @extend_schema(summary="Create a new order",
-                         request=spectacular_serializers.OrderSerializer,
-                         examples=[OpenApiExample(name="Example request body",
-                                                  value={"order_id": "3", "contact_id": "2"})])
+    @extend_schema(
+        summary="Create a new order",
+        request=OpenApiRequest(
+            spectacular_serializers.OrderSerializer,
+            examples=[OpenApiExample(name="Example request body", value={"order_id": "3", "contact_id": "2"})]
+        ),
+        responses={
+            HTTP_201_CREATED: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Created",
+                examples=[OpenApiExample(name="OK", value={'Status': True})]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Bad Request",
+                examples=[
+                    OpenApiExample(
+                        name="JSON parse error",
+                        value={
+                            'Status': False,
+                            'Errors': 'JSON parse error - Expecting value: line 2 column 15 (char 16)'
+                        }
+                    ),
+                    OpenApiExample(name="JSONDecodeError",
+                                   value={"Status": False, "Errors": "Expected object or value"}),
+                    OpenApiExample(
+                        name="Wrong/missing keys, wrong value format",
+                        value={
+                            "Status": False,
+                            "Errors": [
+                                "The following required keys are missing: ['order_id']",
+                                "Wrong keys: ['order_di']. Required keys are: ('order_id', 'contact_id')",
+                                "Wrong values: ['']. Required values must be integers or a string format digits"
+                            ]
+                        }
+                    ),
+                    OpenApiExample(name="Wrong values",
+                                   value={"Status": False,
+                                          "Errors": ["Wrong values: [['\"3\"'], ['\"2\"']]. "
+                                                     "Values must not start from quotes"]}),
+                    OpenApiExample(
+                        name="Order not found",
+                        value={'Status': False, 'Errors': f"Order with 'order_id' = '1' does not exist"}
+                    ),
+                    OpenApiExample(
+                        name="Wrong 'contact_id'",
+                        value={
+                            'Status': False,
+                            'Errors': f"Wrong 'contact_id':"
+                                      f" Key (contact_id)=(10) is not present in table \"backend_contact\".\n"
+                        }
+                    ),
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Forbidden",
+                examples=[OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})]
+            ),
+            HTTP_404_NOT_FOUND: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Not found",
+                examples=[
+                    OpenApiExample(
+                        name="Order is not found",
+                        value={"Status": False, "Errors": "Order with 'order_id' = '1' does not exist"}
+                    )
+                ],
+            ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Unsupported media type",
+                examples=[
+                    OpenApiExample(
+                        name="Unsupported media type",
+                        value={
+                            'Status': False,
+                            'Errors': f"Unsupported media type. Expected media types: ('application/json', "
+                                      f"'application/x-www-form-urlencoded', 'multipart/form-data')"
+                        }
+                    )
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
                Put an order and send a notification.
@@ -1137,19 +1288,47 @@ class OrderView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if {'order_id', 'contact_id'}.issubset(request.data):
-            if request.data['order_id'].isdigit():
-                requested_order = Order.objects.filter(user_id=request.user.id, id=request.data['order_id'])
-                if not requested_order:
-                    return JsonResponse({'Status': False, 'Errors': 'No order with such order_id'})
-                try:
-                    is_updated = requested_order.update(contact_id=request.data['contact_id'], state='new')
-                except IntegrityError as error:
-                    print(error)
-                    return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
-                else:
-                    if is_updated:
-                        new_order.send(sender=self.__class__, user_id=request.user.id)
-                        return JsonResponse({'Status': True})
+        if True not in [request.content_type.startswith(required_type) for required_type in CONTENT_TYPES]:
+            # if not request.content_type.startswith(content_type):
+            return JsonResponse(
+                {'Status': False, 'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"},
+                status=415
+            )
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        required_keys: tuple = ('order_id', 'contact_id')
+        # request_data_validated: Mapping[str, str | int] | Iterable[Mapping[str, str | int]]
+        # order_id: int
+        # contact_id: int
+
+        if request.content_type == CONTENT_TYPES[0]:
+            json_parse_bool, json_parse_result = json_parse(request)
+
+            if not json_parse_bool:
+                return json_parse_result
+            validation_bool, validation_result = validate_keys_and_values(request, required_keys, **json_parse_result)
+
+            if not validation_bool:
+                return validation_result
+        else:
+            non_json_parse_bool, non_json_parse_result = non_json_parse(request, *required_keys)
+            if not non_json_parse_bool:
+                return non_json_parse_result
+            validation_bool, validation_result = validate_keys_and_values(request, **request.data)
+            if not validation_bool:
+                return validation_result
+
+        requested_order = Order.objects.filter(user_id=request.user.id, id=request.data['order_id'])
+        if not requested_order:
+            return JsonResponse(
+                {'Status': False, 'Errors': f"Order with 'order_id' = '{request.data['order_id']}' does not exist"},
+                status=404
+            )
+        try:
+            is_updated = requested_order.update(contact_id=request.data['contact_id'], state='new')
+        except IntegrityError as err:
+            return JsonResponse({'Status': False, 'Errors': f"Wrong 'contact_id': {str(err).split(sep=': ')[1]}"},
+                                status=400)
+        else:
+            if is_updated:
+                new_order.send(sender=self.__class__, user_id=request.user.id)
+                return JsonResponse({'Status': True}, status=201)
