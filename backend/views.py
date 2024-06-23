@@ -38,46 +38,51 @@ from backend.tasks import update_price_list
 CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded", "multipart/form-data")
 
 
-def json_parse(request: Request) -> tuple[bool, JsonResponse | Mapping[str, str | int]]:
+def json_parse(request: Request) -> JsonResponse | None:
     """JSON parse errors processing"""
     try:
         request_data_parsed: Mapping[str, str | int] = request.data
     except ParseError as err:
-        return False, JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-    else:
-        return True, request_data_parsed
+        return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
 
 
-def non_json_parse(request: Request, *args: Iterable) -> tuple[bool, JsonResponse | None]:
-    for arg in args:
+def non_json_parse(request: Request, keys: Iterable) -> JsonResponse | None:
+    """Non-JSON parse errors processing"""
+
+    for key in keys:
         try:
-            arg_parsed = load_json(request.data.get(arg))
+            value_parsed = load_json(request.data.get(key))
         except JSONDecodeError as err:
-            return False, JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-        else:
-            return True, None
+            return JsonResponse({'Status': False, 'Errors': f"{err}. Expected values: digits without quotes"}, status=400)
 
 
-def validate_keys_and_values(request: Request, required_keys: str = None,
-                             data: Mapping = None,
+def validate_keys_and_values(request: Request,
+                             expected_keys: Iterable = None,
                              *args: Iterable,
-                             **kwargs: Mapping) -> tuple[bool, JsonResponse | None]:
+                             **kwargs: Mapping) -> JsonResponse | None:
     errors_list: list[str] = []
     missing_keys_list: list[str] = []
     wrong_keys_list: list[str] = []
     json_wrong_values_list: list[str] = []
     non_json_wrong_values_list: list[str] = []
 
-    for required_key in required_keys:
+    for required_key in expected_keys:
         if required_key not in kwargs.keys():
             missing_keys_list.append(required_key)
     for key, value in kwargs.items():
+        # if request.content_type == CONTENT_TYPES[0]:
+        if key not in expected_keys:
+            wrong_keys_list.append(key)
         if request.content_type == CONTENT_TYPES[0]:
-            if key not in required_keys:
-                wrong_keys_list.append(key)
             if type(value) is str and not value.isdigit():
                 json_wrong_values_list.append(value)
         else:
+            try:
+                value_parsed = load_json(request.data.get(key))
+            except JSONDecodeError as err:
+                return JsonResponse({'Status': False, 'Errors': f"JSONDecodeError: '{err}'. "
+                                                                f"Expected values: digits without quotes"},
+                                    status=400)
             for item in value:
                 if item.startswith(('"', "'")):
                     non_json_wrong_values_list.append(value)
@@ -85,18 +90,15 @@ def validate_keys_and_values(request: Request, required_keys: str = None,
     if missing_keys_list:
         errors_list.append(f'The following required keys are missing: {missing_keys_list}')
     if wrong_keys_list:
-        errors_list.append(f'Wrong keys: {wrong_keys_list}. Required keys are: {required_keys}')
+        errors_list.append(f'Wrong keys: {wrong_keys_list}. Expected keys are: {expected_keys}')
     if json_wrong_values_list:
-        errors_list.append(f'Wrong values: {json_wrong_values_list}. Required values must be integers '
-                           f'or a string format digits')
+        errors_list.append(f'Wrong values: {json_wrong_values_list}. Expected values: '
+                           f'integers or a string format digits')
     if non_json_wrong_values_list:
-        errors_list.append(f'Wrong values: {non_json_wrong_values_list}. Values must not start from quotes')
+        errors_list.append(f'Wrong values: {non_json_wrong_values_list}. Expected values: digits without quotes')
 
     if errors_list:
-        return False, JsonResponse({'Status': False, 'Errors': errors_list}, status=400)
-    else:
-        return True, None
-
+        return JsonResponse({'Status': False, 'Errors': errors_list}, status=400)
 
 
 @extend_schema(tags=["users"])
@@ -1197,7 +1199,7 @@ class OrderView(APIView):
             HTTP_201_CREATED: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
                 description="Created",
-                examples=[OpenApiExample(name="OK", value={'Status': True})]
+                examples=[OpenApiExample(name="Created", value={'Status': True})]
             ),
             HTTP_400_BAD_REQUEST: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
@@ -1226,7 +1228,7 @@ class OrderView(APIView):
                     OpenApiExample(name="Wrong values",
                                    value={"Status": False,
                                           "Errors": ["Wrong values: [['\"3\"'], ['\"2\"']]. "
-                                                     "Values must not start from quotes"]}),
+                                                     "Do not put values in quotes"]}),
                     OpenApiExample(
                         name="Order not found",
                         value={'Status': False, 'Errors': f"Order with 'order_id' = '1' does not exist"}
@@ -1288,33 +1290,29 @@ class OrderView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if True not in [request.content_type.startswith(required_type) for required_type in CONTENT_TYPES]:
-            # if not request.content_type.startswith(content_type):
+        # content_types_mapping = [request.content_type.startswith(content_type) for content_type in CONTENT_TYPES]
+        if True not in map(lambda content_type: request.content_type.startswith(content_type), CONTENT_TYPES):
             return JsonResponse(
                 {'Status': False, 'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"},
                 status=415
             )
 
-        required_keys: tuple = ('order_id', 'contact_id')
-        # request_data_validated: Mapping[str, str | int] | Iterable[Mapping[str, str | int]]
-        # order_id: int
-        # contact_id: int
+        expected_keys: tuple = ('order_id', 'contact_id')
 
         if request.content_type == CONTENT_TYPES[0]:
-            json_parse_bool, json_parse_result = json_parse(request)
-
-            if not json_parse_bool:
+            json_parse_result = json_parse(request)
+            if type(json_parse_result) == JsonResponse:
                 return json_parse_result
-            validation_bool, validation_result = validate_keys_and_values(request, required_keys, **json_parse_result)
+            validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
 
-            if not validation_bool:
+            if type(validation_result) == JsonResponse:
                 return validation_result
         else:
-            non_json_parse_bool, non_json_parse_result = non_json_parse(request, *required_keys)
-            if not non_json_parse_bool:
+            non_json_parse_result = non_json_parse(request=request, keys=expected_keys)
+            if type(non_json_parse_result) == JsonResponse:
                 return non_json_parse_result
-            validation_bool, validation_result = validate_keys_and_values(request, **request.data)
-            if not validation_bool:
+            validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
+            if type(validation_result) == JsonResponse:
                 return validation_result
 
         requested_order = Order.objects.filter(user_id=request.user.id, id=request.data['order_id'])
