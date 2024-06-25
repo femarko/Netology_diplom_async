@@ -121,3 +121,5 @@ local_settings.py
 local_dev/
 local_dev_settings.py
 
+logs
+

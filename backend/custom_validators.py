@@ -12,18 +12,10 @@ CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded", "multi
 def json_parse(request: Request) -> JsonResponse | None:
     """JSON parse errors processing"""
     try:
-        request_data_parsed: Mapping[str, str | int] = request.data
+        request.data
+        # request_data_parsed: Mapping[str, str | int] = load_json(request.data)
     except ParseError as err:
         return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-
-
-def non_json_parse(request: Request, keys: Iterable) -> JsonResponse | None:
-    """Non-JSON parse errors processing"""
-    for key in keys:
-        try:
-            value_parsed = load_json(request.data.get(key))
-        except JSONDecodeError as err:
-            return JsonResponse({'Status': False, 'Errors': f"{err}. Expected values: digits without quotes"}, status=400)
 
 
 def validate_keys_and_values(request: Request,
@@ -41,7 +33,6 @@ def validate_keys_and_values(request: Request,
         if required_key not in kwargs.keys():
             missing_keys_list.append(required_key)
     for key, value in kwargs.items():
-        # if request.content_type == CONTENT_TYPES[0]:
         if key not in expected_keys:
             wrong_keys_list.append(key)
         if request.content_type == CONTENT_TYPES[0]:
@@ -51,11 +42,7 @@ def validate_keys_and_values(request: Request,
             try:
                 value_parsed = load_json(request.data.get(key))
             except JSONDecodeError as err:
-                json_decode_errors_list.append(err)
-                # return JsonResponse({'Status': False, 'Errors': f"JSONDecodeError: '{err}'. "
-                #                                                 f"Expected values: digits without quotes"},
-                #                     status=400)
-            # if not json_decode_errors_list:
+                json_decode_errors_list.append(str(err))
             for item in value:
                 if item.startswith(('"', "'")):
                     non_json_wrong_values_list.append(value)

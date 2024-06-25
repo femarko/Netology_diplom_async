@@ -32,7 +32,7 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer, RegisterAccountSerializer
 from backend import spectacular_serializers
-from backend.custom_validators import json_parse, non_json_parse, validate_keys_and_values, CONTENT_TYPES
+from backend.custom_validators import json_parse, validate_keys_and_values, CONTENT_TYPES
 from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
 
@@ -1226,7 +1226,6 @@ class OrderView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        # content_types_mapping = [request.content_type.startswith(content_type) for content_type in CONTENT_TYPES]
         if True not in map(lambda content_type: request.content_type.startswith(content_type), CONTENT_TYPES):
             return JsonResponse(
                 {'Status': False, 'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"},
@@ -1244,9 +1243,6 @@ class OrderView(APIView):
             if type(validation_result) == JsonResponse:
                 return validation_result
         else:
-            # non_json_parse_result = non_json_parse(request=request, keys=expected_keys)
-            # if type(non_json_parse_result) == JsonResponse:
-            #     return non_json_parse_result
             validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
             if type(validation_result) == JsonResponse:
                 return validation_result
