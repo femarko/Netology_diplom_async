@@ -32,73 +32,9 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer, RegisterAccountSerializer
 from backend import spectacular_serializers
+from backend.custom_validators import json_parse, non_json_parse, validate_keys_and_values, CONTENT_TYPES
 from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
-
-CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded", "multipart/form-data")
-
-
-def json_parse(request: Request) -> JsonResponse | None:
-    """JSON parse errors processing"""
-    try:
-        request_data_parsed: Mapping[str, str | int] = request.data
-    except ParseError as err:
-        return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-
-
-def non_json_parse(request: Request, keys: Iterable) -> JsonResponse | None:
-    """Non-JSON parse errors processing"""
-
-    for key in keys:
-        try:
-            value_parsed = load_json(request.data.get(key))
-        except JSONDecodeError as err:
-            return JsonResponse({'Status': False, 'Errors': f"{err}. Expected values: digits without quotes"}, status=400)
-
-
-def validate_keys_and_values(request: Request,
-                             expected_keys: Iterable = None,
-                             *args: Iterable,
-                             **kwargs: Mapping) -> JsonResponse | None:
-    errors_list: list[str] = []
-    missing_keys_list: list[str] = []
-    wrong_keys_list: list[str] = []
-    json_wrong_values_list: list[str] = []
-    non_json_wrong_values_list: list[str] = []
-
-    for required_key in expected_keys:
-        if required_key not in kwargs.keys():
-            missing_keys_list.append(required_key)
-    for key, value in kwargs.items():
-        # if request.content_type == CONTENT_TYPES[0]:
-        if key not in expected_keys:
-            wrong_keys_list.append(key)
-        if request.content_type == CONTENT_TYPES[0]:
-            if type(value) is str and not value.isdigit():
-                json_wrong_values_list.append(value)
-        else:
-            try:
-                value_parsed = load_json(request.data.get(key))
-            except JSONDecodeError as err:
-                return JsonResponse({'Status': False, 'Errors': f"JSONDecodeError: '{err}'. "
-                                                                f"Expected values: digits without quotes"},
-                                    status=400)
-            for item in value:
-                if item.startswith(('"', "'")):
-                    non_json_wrong_values_list.append(value)
-
-    if missing_keys_list:
-        errors_list.append(f'The following required keys are missing: {missing_keys_list}')
-    if wrong_keys_list:
-        errors_list.append(f'Wrong keys: {wrong_keys_list}. Expected keys are: {expected_keys}')
-    if json_wrong_values_list:
-        errors_list.append(f'Wrong values: {json_wrong_values_list}. Expected values: '
-                           f'integers or a string format digits')
-    if non_json_wrong_values_list:
-        errors_list.append(f'Wrong values: {non_json_wrong_values_list}. Expected values: digits without quotes')
-
-    if errors_list:
-        return JsonResponse({'Status': False, 'Errors': errors_list}, status=400)
 
 
 @extend_schema(tags=["users"])
@@ -1308,9 +1244,9 @@ class OrderView(APIView):
             if type(validation_result) == JsonResponse:
                 return validation_result
         else:
-            non_json_parse_result = non_json_parse(request=request, keys=expected_keys)
-            if type(non_json_parse_result) == JsonResponse:
-                return non_json_parse_result
+            # non_json_parse_result = non_json_parse(request=request, keys=expected_keys)
+            # if type(non_json_parse_result) == JsonResponse:
+            #     return non_json_parse_result
             validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
             if type(validation_result) == JsonResponse:
                 return validation_result
