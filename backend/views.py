@@ -1148,26 +1148,16 @@ class OrderView(APIView):
                             'Errors': 'JSON parse error - Expecting value: line 2 column 15 (char 16)'
                         }
                     ),
-                    OpenApiExample(name="JSONDecodeError",
-                                   value={"Status": False, "Errors": "Expected object or value"}),
-                    OpenApiExample(
-                        name="Wrong/missing keys, wrong value format",
-                        value={
-                            "Status": False,
-                            "Errors": [
-                                "The following required keys are missing: ['order_id']",
-                                "Wrong keys: ['order_di']. Required keys are: ('order_id', 'contact_id')",
-                                "Wrong values: ['']. Required values must be integers or a string format digits"
-                            ]
-                        }
-                    ),
-                    OpenApiExample(name="Wrong values",
-                                   value={"Status": False,
-                                          "Errors": ["Wrong values: [['\"3\"'], ['\"2\"']]. "
-                                                     "Do not put values in quotes"]}),
-                    OpenApiExample(
-                        name="Order not found",
-                        value={'Status': False, 'Errors': f"Order with 'order_id' = '1' does not exist"}
+                    OpenApiExample(name="JSONDecodeError/Malformed data",
+                                   value={
+                                       "Status": False,
+                                       "Errors": [
+                                           "The following required keys are missing: ['contact_id']",
+                                           "Wrong keys: ['contact_di']. Expected keys are: ('order_id', 'contact_id')",
+                                           "JSONDecodeErrors: ['Expected object or value']",
+                                           "Wrong values: [[\"'2'\"]]. Expected values: digits without quotes"
+                                       ]
+                                   }
                     ),
                     OpenApiExample(
                         name="Wrong 'contact_id'",
@@ -1201,9 +1191,9 @@ class OrderView(APIView):
                     OpenApiExample(
                         name="Unsupported media type",
                         value={
-                            'Status': False,
-                            'Errors': f"Unsupported media type. Expected media types: ('application/json', "
-                                      f"'application/x-www-form-urlencoded', 'multipart/form-data')"
+                            "Status": False,
+                            "Errors": "Unsupported media type. Expected media types: "
+                                      "('application/json', 'application/x-www-form-urlencoded', 'multipart/form-data')"
                         }
                     )
                 ]
@@ -1239,7 +1229,6 @@ class OrderView(APIView):
             if type(json_parse_result) == JsonResponse:
                 return json_parse_result
             validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
-
             if type(validation_result) == JsonResponse:
                 return validation_result
         else:
