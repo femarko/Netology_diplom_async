@@ -557,56 +557,39 @@ class BasketView(APIView):
                 status=415
             )
 
-        expected_keys: tuple = ("product_info", "quantity")
-
         if request.content_type == CONTENT_TYPES[0]:
-            json_parse_result = json_parse(request=request)
-            if type(json_parse_result) is JsonResponse:
-                return json_parse_result
+            parse_result: JsonResponse | None = json_parse(request=request)
+            if type(parse_result) == JsonResponse:
+                return parse_result
+            try:
+                list_of_items_dicts: list[dict[str, [int | str]]] = request.data["items"]
+            except KeyError:
+                return JsonResponse({'Status': False, 'Errors': "Wrong key. Expected key: 'items'"}, status=400)
         else:
             try:
-                non_json_parse_result = load_json(request.data)
+                list_of_items_dicts: list[dict[str, str | int]] = load_json(request.data["items"])
+            except KeyError:
+                return JsonResponse({'Status': False, 'Errors': "Wrong key. Expected key: 'items'"}, status=400)
             except JSONDecodeError as err:
                 return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             except TypeError as err:
                 return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
 
-        try:
-            list_of_items_dicts: list[dict[str, [int | str]]] = request.data["items"]
-        except KeyError as err:
-            return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-
-        # for items_dict in request.data.get("items"):
-        #     validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, )
-        #     if type(validation_result) == JsonResponse:
-        #         validation_errors.append(validation_result)
-        # if validation_errors:
-        #     return JsonResponse(
-        #         {'Status': False, 'Errors': validation_errors}, status=400)
-        # get_items_list_result: [list[dict[str, [int | str]]] | JsonResponse] = self.get_items_list(
-        #     request, *required_keys_in_request_body
-        # )
-        # if type(get_items_list_result) == JsonResponse:
-        #     return get_items_list_result
-
-        # items_list: list[dict[str, [int | str]]] = get_items_list_result
-        # basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
-        # objects_created = 0
-        # try:
-        #     for order_item in request.data["items"]:
-        #
-        #     order_item.update({'order': basket.id})
-        #     serializer = OrderItemSerializer(data=order_item)
-        #     if serializer.is_valid():
-        #         try:
-        #             serializer.save()
-        #         except IntegrityError as err:
-        #             return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-        #         else:
-        #             objects_created += 1
-        #     else:
-        #         return JsonResponse({'Status': False, 'Errors': str(serializer.errors)}, status=400)
-        # return JsonResponse({'Status': True, 'Number of objects created': objects_created}, status=201)
+        for order_item in list_of_items_dicts:
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+            objects_created = 0
+            order_item.update({'order': basket.id})
+            serializer = OrderItemSerializer(data=order_item)
+            if serializer.is_valid():
+                try:
+                    serializer.save()
+                except IntegrityError as err:
+                    return JsonResponse({'Status': False, 'Errors': str(err)})
+                else:
+                    objects_created += 1
+                    return JsonResponse({'Status': True, 'Number of objects created': objects_created})
+            else:
+                return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
     @extend_schema(
         summary="Remove an item from the user's basket",
@@ -1261,13 +1244,10 @@ class OrderView(APIView):
             json_parse_result = json_parse(request)
             if type(json_parse_result) == JsonResponse:
                 return json_parse_result
-            validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
-            if type(validation_result) == JsonResponse:
-                return validation_result
-        else:
-            validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
-            if type(validation_result) == JsonResponse:
-                return validation_result
+
+        validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
+        if type(validation_result) == JsonResponse:
+            return validation_result
 
         requested_order = Order.objects.filter(user_id=request.user.id, id=request.data['order_id'])
         if not requested_order:
