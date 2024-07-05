@@ -73,9 +73,11 @@ class ProductInfoSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    product_info_id = serializers.IntegerField()
+
     class Meta:
         model = OrderItem
-        fields = ('id', 'product_info', 'quantity', 'order',)
+        fields = ('id', 'product_info', 'product_info_id', 'quantity', 'order',)
         read_only_fields = ('id',)
         extra_kwargs = {
             'order': {'write_only': True}

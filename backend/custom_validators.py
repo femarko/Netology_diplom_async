@@ -13,8 +13,7 @@ def json_parse(request: Request) -> JsonResponse | None:
     """JSON parse errors processing"""
     try:
         request.data
-        # request_data_parsed: Mapping[str, str | int] = load_json(request.data)
-    except ParseError as err:
+    except Exception as err:
         return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
 
 
