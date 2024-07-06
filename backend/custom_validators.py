@@ -1,4 +1,4 @@
-from typing import Mapping, Iterable
+from typing import Mapping, Iterable, Any
 
 from ujson import loads as load_json, JSONDecodeError
 
@@ -9,12 +9,57 @@ from rest_framework.request import Request
 CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded", "multipart/form-data")
 
 
+def validate_content_type(request: Request, content_types: Iterable) -> None | JsonResponse:
+    if True not in map(lambda content_type: request.content_type.startswith(content_type), content_types):
+        return JsonResponse(
+            {'Status': False, 'Errors': f"{request.content_type} is unsupported media type. "
+                                        f"Expected media types: {content_types}"},
+            status=415
+        )
+
+
 def json_parse(request: Request) -> JsonResponse | None:
     """JSON parse errors processing"""
     try:
         request.data
     except Exception as err:
         return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+
+
+def get_request_items(request: Request,
+                      content_types: tuple | list,
+                      expected_key: str = None) -> str | Iterable | Mapping| JsonResponse:
+    """
+
+    Args:
+        request ():
+        content_types ():
+        expected_key ():
+
+    Returns:
+
+    """
+    if request.content_type == content_types[0]:
+        parse_result: JsonResponse | None = json_parse(request=request)
+        if parse_result:
+            return parse_result
+    if expected_key:
+        if request.content_type == content_types[0]:
+            try:
+                request_items: list | Iterable | Mapping = request.data[expected_key]
+            except KeyError:
+                return JsonResponse({'Status': False, 'Errors': "Wrong key. Expected key: 'items'"}, status=400)
+            else:
+                return request_items
+        else:
+            try:
+                request_items: list | Iterable | Mapping = load_json(request.data[expected_key])
+            except KeyError:
+                return JsonResponse({'Status': False, 'Errors': "Wrong key. Expected key: 'items'"}, status=400)
+            except Exception as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+            else:
+                return request_items
 
 
 def validate_keys_and_values(request: Request,

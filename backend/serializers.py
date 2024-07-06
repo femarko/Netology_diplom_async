@@ -73,15 +73,30 @@ class ProductInfoSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product_info_id = serializers.IntegerField()
-
     class Meta:
         model = OrderItem
-        fields = ('id', 'product_info', 'product_info_id', 'quantity', 'order',)
+        fields = ('id', 'product_info', 'quantity', 'order',)
         read_only_fields = ('id',)
         extra_kwargs = {
             'order': {'write_only': True}
         }
+
+
+class BasketPostSerializer(serializers.ModelSerializer):
+    product_info_id = serializers.IntegerField()
+
+    class Meta:
+        model = OrderItem
+        fields = ('product_info_id', 'quantity', 'order')
+
+
+class OrderItemPutSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    quantity = serializers.IntegerField()
+
+    class Meta:
+        model = OrderItem
+        fields = ('id', 'quantity')
 
 
 class OrderItemCreateSerializer(OrderItemSerializer):
@@ -98,3 +113,12 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('id', 'ordered_items', 'state', 'dt', 'total_sum', 'contact',)
         read_only_fields = ('id',)
+
+
+class OrderPostSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField()
+    contact_id = serializers.IntegerField()
+
+    class Meta:
+        model = Order
+        fields = ('id', 'contact_id')

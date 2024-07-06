@@ -30,9 +30,11 @@ from celery.result import AsyncResult
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializer, OrderSerializer, ContactSerializer, RegisterAccountSerializer
+    OrderItemSerializer, OrderSerializer, ContactSerializer, RegisterAccountSerializer, OrderItemPutSerializer, \
+    OrderPostSerializer, BasketPostSerializer
 from backend import spectacular_serializers
-from backend.custom_validators import json_parse, validate_keys_and_values, CONTENT_TYPES
+from backend.custom_validators import json_parse, validate_keys_and_values, CONTENT_TYPES, validate_content_type, \
+    get_request_items
 from backend.signals import new_user_registered, new_order
 from backend.tasks import update_price_list
 
@@ -394,48 +396,6 @@ class BasketView(APIView):
     - None
     """
 
-    # todo: perhaps all this staff should be processed within a serializer?
-    # todo: redesign -> give back content_type check to the view.method
-    def get_items_list(self, request: Request, *args, **kwargs) -> [list[dict[str, [int | str]]] | JsonResponse]:
-        """
-        Check request body data
-        """
-
-        if request.content_type == "application/json":
-            try:
-                request_data: Request.data = request.data
-            except ParseError as err:
-                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-            try:
-                list_of_items_dicts: list[dict[str, [int | str]]] = request_data["items"]
-            except KeyError as err:
-                return JsonResponse({'Status': False, 'Errors': f"The required key {str(err)} is not provided"},
-                                    status=400)
-            errors_list: list = []
-            wrong_keys_list: list = []
-            wrong_values_list: list = []
-            for items_dict in list_of_items_dicts:
-                for key, value in items_dict.items():
-                    if key not in args:
-                        wrong_keys_list.append(key)
-                    if type(value) is str and not value.isdigit():
-                        wrong_values_list.append(value)
-            if wrong_keys_list:
-                errors_list.append(f'Wrong keys: {wrong_keys_list}. Required keys are: {args}')
-            if wrong_values_list:
-                errors_list.append(f'Wrong values: {wrong_values_list}. Required values must be integers '
-                                   f'or a string format digits')
-            if errors_list:
-                return JsonResponse({'Status': False, 'Errors': errors_list}, status=400)
-            return list_of_items_dicts  # todo: it is better to return None here
-        else:
-            try:
-                list_of_items_dicts: list[dict[str, [int | str]]] = load_json(request.data.get("items"))
-            except JSONDecodeError as err:
-                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-            else:
-                return list_of_items_dicts
-
     # получить корзину
     @extend_schema(
         summary="Retrieve the items in the user's basket",
@@ -505,7 +465,7 @@ class BasketView(APIView):
                                        "Status": False,
                                        "Errors": "No ':' found when decoding object value"
                                    }
-                    ),
+                                   ),
                     OpenApiExample(
                         name="Serializer errors",
                         value={
@@ -517,9 +477,10 @@ class BasketView(APIView):
                     OpenApiExample(name="Integrity error",
                                    value={
                                        "Status": False,
-                                       "Errors": "['Key (order_id, product_info_id)=(4, 1) already exists.\\n']"
+                                       "Errors": "duplicate key value violates unique constraint \"unique_order_item\""
+                                                 "\nDETAIL:  Key (order_id, product_info_id)=(7, 1) already exists.\n"
                                    }
-                    ),
+                                   ),
                 ]
             ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
@@ -557,46 +518,37 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if True not in map(lambda content_type: request.content_type.startswith(content_type), CONTENT_TYPES):
-            return JsonResponse(
-                {'Status': False, 'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"},
-                status=415
-            )
-        if request.content_type == CONTENT_TYPES[0]:
-            parse_result: JsonResponse | None = json_parse(request=request)
-            if type(parse_result) == JsonResponse:
-                return parse_result
-            try:
-                list_of_items_dicts: list[dict[str, [int | str]]] = request.data["items"]
-            except KeyError:
-                return JsonResponse({'Status': False, 'Errors': "Wrong key. Expected key: 'items'"}, status=400)
-        else:
-            try:
-                list_of_items_dicts: list[dict[str, str | int]] = load_json(request.data["items"])
-            except KeyError:
-                return JsonResponse({'Status': False, 'Errors': "Wrong key. Expected key: 'items'"}, status=400)
-            except Exception as err:
-                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
-        if list_of_items_dicts:
+        content_type_validation_result = validate_content_type(request=request, content_types=CONTENT_TYPES)
+        if content_type_validation_result:
+            return content_type_validation_result
+
+        get_request_items_result: str | Iterable | Mapping = get_request_items(request=request,
+                                                                               content_types=CONTENT_TYPES,
+                                                                               expected_key="items")
+
+        if type(get_request_items_result) is not JsonResponse:
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
-            data_to_validate = [{**order_item, **{'order': basket.id}} for order_item in list_of_items_dicts]
-            serializer = OrderItemSerializer(data=data_to_validate, many=True)
+            data_to_validate = [{**order_item, **{'order': basket.id}} for order_item in get_request_items_result]
+            serializer = BasketPostSerializer(data=data_to_validate, many=True)
             try:
                 serializer.is_valid(raise_exception=True)
             except serializers.ValidationError:
                 return JsonResponse(
-                    {'Status': False, 'Data provided': list_of_items_dicts, 'Errors': serializer.errors}, status=400
+                    {'Status': False, 'Data provided': get_request_items_result, 'Errors': serializer.errors},
+                    status=400
                 )
             except Exception as err:
                 return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             try:
                 serializer.save()
             except IntegrityError as err:
-                return JsonResponse({'Status': False, 'Errors': str(str(err).split(":  ")[-1:])}, status=400)
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             except Exception as err:
                 return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             else:
-                return JsonResponse({'Status': True, 'Number of objects created': len(serializer.instance)}, status=201)
+                return JsonResponse({'Status': True, 'Number of objects created': len(serializer.instance)},
+                                    status=201)
+        return get_request_items_result
 
     @extend_schema(
         summary="Remove an item from the user's basket",
@@ -674,7 +626,7 @@ class BasketView(APIView):
             ]
         ),
         responses={
-            HTTP_201_CREATED: OpenApiResponse(
+            HTTP_200_OK: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
                 description="Success",
                 examples=[
@@ -685,33 +637,55 @@ class BasketView(APIView):
                 response=spectacular_serializers.ResponseSerializer,
                 description="Error: Bad Request",
                 examples=[
-                    OpenApiExample(name="ParseError",
+                    OpenApiExample(name="JSON parse error",
                                    value={
                                        'Status': False,
-                                       'Errors': 'JSON parse error - Expecting value: line 4 column 13 (char 33)'
+                                       'Errors': 'JSON parse error - Expecting value: line 4 column 23 (char 43)'
                                    }),
-                    OpenApiExample(name='Key "items" is required',
-                                   value={'Status': False, 'Errors': "The required key 'items' is not provided"}),
-                    OpenApiExample(
-                        name="Wrong keys or values",
-                        value={
-                            "Status": False,
-                            "Errors": [
-                                "Wrong keys: ['quantit']. Required keys are: ('id', 'quantity')",
-                                "Wrong values: ['abc']. Required values must be integers or a string format digits"
-                            ]
-                        }
-                    ),
+                    OpenApiExample(name="Wrong key",
+                                   value={'Status': False, 'Errors': "Wrong key. Expected key: 'items'"}),
                     OpenApiExample(name="JSONDecodeError",
-                                   value={'Status': False, 'Errors': 'Expected object or value'}),
-
+                                   value={
+                                       "Status": False,
+                                       "Errors": "No ':' found when decoding object value"
+                                   }),
+                    OpenApiExample(name="Serializer errors",
+                                   value={
+                                       "Status": False,
+                                       "Data provided": [{"id": 1, "quantit": 2}],
+                                       "Errors": [{"quantity": ["This field is required."]}]
+                                   }),
                 ]
             ),
-
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
                 description="Error: Forbidden",
                 examples=[OpenApiExample(name="Log in required", value={'Status': False, 'Error': 'Log in required'})]
+            ),
+            HTTP_404_NOT_FOUND: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Not found",
+                examples=[
+                    OpenApiExample(
+                        name="Order is not found",
+                        value={
+                            "Status": False,
+                            "Data provided": [{"id": 1, "quantity": 2}],
+                            "Errors": "Order items with IDs provided are not found"}
+                    )
+                ],
+            ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Unsupported media type",
+                examples=[
+                    OpenApiExample(
+                        name="Unsupported media type",
+                        value={
+                            'Status': False, 'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"
+                        }
+                    )
+                ]
             ),
             HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
                                                             description="Any unexpected internal server errors")
@@ -730,19 +704,39 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        required_keys_in_request_body: tuple = ("id", "quantity")
-        get_items_list_result: [list[dict[str, [int | str]]] | JsonResponse] = \
-            self.get_items_list(request, *required_keys_in_request_body)
-        if type(get_items_list_result) == JsonResponse:
-            return get_items_list_result
+        content_type_validation_result = validate_content_type(request=request, content_types=CONTENT_TYPES)
+        if content_type_validation_result:
+            return content_type_validation_result
 
-        items_list: list[dict[str, [int | str]]] = get_items_list_result
-        basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
-        objects_updated = 0
-        for order_item in items_list:
-            objects_updated += OrderItem.objects.filter(order_id=basket.id, id=int(order_item.get('id'))).update(
-                quantity=int(order_item.get('quantity')))
-        return JsonResponse({'Status': True, 'Number of objects updated': objects_updated}, status=201)
+        get_request_items_result: list | Iterable | JsonResponse = get_request_items(request=request,
+                                                                                     content_types=CONTENT_TYPES,
+                                                                                     expected_key="items")
+
+        if type(get_request_items_result) is not JsonResponse:
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
+            objects_updated = 0
+            serializer = OrderItemPutSerializer(data=get_request_items_result, many=True)
+            try:
+                serializer.is_valid(raise_exception=True)
+            except serializers.ValidationError:
+                return JsonResponse(
+                    {'Status': False, 'Data provided': serializer.initial_data, 'Errors': serializer.errors},
+                    status=400
+                )
+            except Exception as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+            for order_item in serializer.validated_data:
+                objects_updated += OrderItem.objects.filter(order_id=basket.id, id=order_item.get('id')).update(
+                    quantity=order_item.get('quantity')
+                )
+            if objects_updated != 0:
+                return JsonResponse({'Status': True, 'Number of objects updated': objects_updated}, status=200)
+            return JsonResponse(
+                {'Status': False, 'Data provided': serializer.initial_data,
+                 'Errors': 'Order items with IDs provided are not found'},
+                status=404
+            )
+        return get_request_items_result
 
 
 @extend_schema(tags=["partners"])
@@ -1152,7 +1146,7 @@ class OrderView(APIView):
         summary="Create a new order",
         request=OpenApiRequest(
             spectacular_serializers.OrderSerializer,
-            examples=[OpenApiExample(name="Example request body", value={"order_id": "3", "contact_id": "2"})]
+            examples=[OpenApiExample(name="Example request body", value={"id": 3, "contact_id": 1})]
         ),
         responses={
             HTTP_201_CREATED: OpenApiResponse(
@@ -1164,30 +1158,27 @@ class OrderView(APIView):
                 response=spectacular_serializers.ResponseSerializer,
                 description="Error: Bad Request",
                 examples=[
-                    OpenApiExample(
-                        name="JSON parse error",
-                        value={
-                            'Status': False,
-                            'Errors': 'JSON parse error - Expecting value: line 2 column 15 (char 16)'
-                        }
-                    ),
-                    OpenApiExample(name="JSONDecodeError/Malformed data",
+                    OpenApiExample(name="JSON parse error",
+                                   value={
+                                       'Status': False,
+                                       'Errors': 'JSON parse error - Expecting value: line 4 column 23 (char 43)'
+                                   }),
+                    OpenApiExample(name="Serializer errors",
                                    value={
                                        "Status": False,
-                                       "Errors": [
-                                           "The following required keys are missing: ['contact_id']",
-                                           "Wrong keys: ['contact_di']. Expected keys are: ('order_id', 'contact_id')",
-                                           "JSONDecodeErrors: ['Expected object or value']",
-                                           "Wrong values: [[\"'2'\"]]. Expected values: digits without quotes"
-                                       ]
-                                   }
-                    ),
+                                       "Data provided": {"id_": "one", "contact_id": "'1'"},
+                                       "Errors": {
+                                           "id": ["This field is required."],
+                                           "contact_id": ["A valid integer is required."]
+                                       }
+                                   }),
                     OpenApiExample(
-                        name="Wrong 'contact_id'",
+                        name="Integrity error / Wrong 'contact_id'",
                         value={
-                            'Status': False,
-                            'Errors': f"Wrong 'contact_id':"
-                                      f" Key (contact_id)=(10) is not present in table \"backend_contact\".\n"
+                            "Status": False,
+                            "Errors": "insert or update on table \"backend_order\" violates foreign key constraint "
+                                      "\"backend_order_contact_id_fe3cc2b6_fk_backend_contact_id\"\nDETAIL:  "
+                                      "Key (contact_id)=(7) is not present in table \"backend_contact\".\n"
                         }
                     ),
                 ]
@@ -1203,7 +1194,7 @@ class OrderView(APIView):
                 examples=[
                     OpenApiExample(
                         name="Order is not found",
-                        value={"Status": False, "Errors": "Order with 'order_id' = '1' does not exist"}
+                        value={"Status": False, "Errors": "Order with 'id' = '1' not found"}
                     )
                 ],
             ),
@@ -1239,35 +1230,39 @@ class OrderView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if True not in map(lambda content_type: request.content_type.startswith(content_type), CONTENT_TYPES):
-            return JsonResponse(
-                {'Status': False, 'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"},
-                status=415
-            )
+        content_type_validation_result = validate_content_type(request=request, content_types=CONTENT_TYPES)
+        if content_type_validation_result:
+            return content_type_validation_result
 
-        expected_keys: tuple = ('order_id', 'contact_id')
-
-        if request.content_type == CONTENT_TYPES[0]:
-            json_parse_result = json_parse(request)
-            if type(json_parse_result) == JsonResponse:
-                return json_parse_result
-
-        validation_result = validate_keys_and_values(request=request, expected_keys=expected_keys, **request.data)
-        if type(validation_result) == JsonResponse:
-            return validation_result
-
-        requested_order = Order.objects.filter(user_id=request.user.id, id=request.data['order_id'])
-        if not requested_order:
-            return JsonResponse(
-                {'Status': False, 'Errors': f"Order with 'order_id' = '{request.data['order_id']}' does not exist"},
-                status=404
-            )
-        try:
-            is_updated = requested_order.update(contact_id=request.data['contact_id'], state='new')
-        except IntegrityError as err:
-            return JsonResponse({'Status': False, 'Errors': f"Wrong 'contact_id': {str(err).split(sep=': ')[1]}"},
-                                status=400)
-        else:
-            if is_updated:
-                new_order.send(sender=self.__class__, user_id=request.user.id)
-                return JsonResponse({'Status': True}, status=201)
+        get_request_items_result = get_request_items(request=request, content_types=CONTENT_TYPES)
+        if type(get_request_items_result) is not JsonResponse:
+            serializer = OrderPostSerializer(data=request.data)
+            try:
+                serializer.is_valid(raise_exception=True)
+            except serializers.ValidationError:
+                return JsonResponse(
+                    {'Status': False, 'Data provided': serializer.initial_data, 'Errors': serializer.errors},
+                    status=400
+                )
+            except Exception as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+            requested_order = Order.objects.filter(user_id=request.user.id, id=serializer.validated_data['id'])
+            if not requested_order:
+                return JsonResponse(
+                    {
+                        'Status': False,
+                        'Errors': f"Order with 'id' = '{serializer.initial_data['id']}' not found"
+                    },
+                    status=404
+                )
+            try:
+                is_updated = requested_order.update(contact_id=serializer.validated_data['contact_id'], state='new')
+            except IntegrityError as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+            except Exception as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+            else:
+                if is_updated:
+                    new_order.send(sender=self.__class__, user_id=request.user.id)
+                    return JsonResponse({'Status': True}, status=201)
+        return get_request_items_result
