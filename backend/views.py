@@ -40,22 +40,6 @@ from backend.tasks import update_price_list
 
 
 @extend_schema(tags=["users"])
-@extend_schema_view(post=extend_schema(summary="Registration of a new account",
-                                       request=spectacular_serializers.RegisterAccountSerializer,
-                                       examples=[OpenApiExample(name="Example request body",
-                                                                value={
-                                                                    "type": "buyer",
-                                                                    "first_name": "Luke",
-                                                                    "last_name": "Skyworker",
-                                                                    "username": "LSkyworker-2024",
-                                                                    "email": "user@example.com",
-                                                                    "password": "secretpass",
-                                                                    "company": "Dream-team Ltd",
-                                                                    "position": "Boss"
-                                                                },
-                                                                description='Required fields: "type", "first_name", '
-                                                                            '"last_name", "email", "password", '
-                                                                            '"company", "position"')]))
 class RegisterAccount(APIView):
     """
     Для регистрации покупателей
@@ -63,6 +47,62 @@ class RegisterAccount(APIView):
 
     # Регистрация методом POST
 
+    @extend_schema(
+        summary="Registration of a new account",
+        request=OpenApiRequest(
+            request=spectacular_serializers.RegisterAccountSerializer,
+            examples=[
+                OpenApiExample(
+                    name="Example request body",
+                    value={
+                        "type": "buyer",
+                        "first_name": "Luke",
+                        "last_name": "Skyworker",
+                        "username": "LSkyworker-2024",
+                        "email": "user@example.com",
+                        "password": "secretpass",
+                        "company": "Dream-team Ltd",
+                        "position": "Boss"
+                    },
+                    description='Required fields: "type", "first_name", "last_name", "email", "password", "company", '
+                                '"position"'
+                )
+            ]
+        ),
+        responses={
+            HTTP_201_CREATED: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Created',
+                examples=[OpenApiExample(name='Created', value={'Status': True})]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad Request',
+                examples=[
+                    OpenApiExample(
+                        name='Incompliant password',
+                        value={
+                            "Status": False,
+                            "Errors": {
+                                "password": ["This password is too short. It must contain at least 8 characters."]
+                            }
+                        }
+                    ),
+                    OpenApiExample(
+                        name='Not unique email address',
+                        value={
+                            "Status": False,
+                            "Errors": {"email": ["User with this email address already exists."]}
+                        }
+                    ),
+                    OpenApiExample(
+                        name='Required arguments are not provided',
+                        value={'Status': False, 'Errors': 'Required arguments are not provided'}
+                    )
+                ]
+            )
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
             Process a POST request and create a new user.
@@ -85,7 +125,7 @@ class RegisterAccount(APIView):
                 # noinspection PyTypeChecker
                 for item in password_error:
                     error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': error_array}})
+                return JsonResponse({'Status': False, 'Errors': {'password': error_array}}, status=400)
             else:
                 # проверяем данные для уникальности имени пользователя
 
@@ -95,11 +135,11 @@ class RegisterAccount(APIView):
                     user = register_account_serializer.save()
                     user.set_password(request.data['password'])
                     user.save()
-                    return JsonResponse({'Status': True})
+                    return JsonResponse({'Status': True}, status=201)
                 else:
-                    return JsonResponse({'Status': False, 'Errors': register_account_serializer.errors})
+                    return JsonResponse({'Status': False, 'Errors': register_account_serializer.errors}, status=400)
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse({'Status': False, 'Errors': 'Required arguments are not provided'}, status=400)
 
 
 @extend_schema(tags=["users"])

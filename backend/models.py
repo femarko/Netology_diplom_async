@@ -94,7 +94,7 @@ class User(AbstractUser):
         return f'{self.first_name} {self.last_name}'
 
     class Meta:
-        verbose_name = 'Пользователь'
+        verbose_name = 'User'
         verbose_name_plural = "Список пользователей"
         ordering = ('email',)
 
