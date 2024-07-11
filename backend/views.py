@@ -96,8 +96,8 @@ class RegisterAccount(APIView):
                         }
                     ),
                     OpenApiExample(
-                        name='Required arguments are not provided',
-                        value={'Status': False, 'Errors': 'Required arguments are not provided'}
+                        name='Required arguments have not been provided',
+                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
                     )
                 ]
             )
@@ -139,22 +139,41 @@ class RegisterAccount(APIView):
                 else:
                     return JsonResponse({'Status': False, 'Errors': register_account_serializer.errors}, status=400)
 
-        return JsonResponse({'Status': False, 'Errors': 'Required arguments are not provided'}, status=400)
+        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
 
 @extend_schema(tags=["users"])
-@extend_schema_view(post=extend_schema(summary="Account confirmation",
-                                       request=spectacular_serializers.ConfirmAccountSerializer,
-                                       examples=[OpenApiExample(name="Example request body",
-                                                                value={
-                                                                    "token": "huik23kijnmk4jnkjhbnklpsefg9ij",
-                                                                    "email": "user@example.com"
-                                                                })]))
 class ConfirmAccount(APIView):
     """
     Класс для подтверждения почтового адреса
     """
 
+    @extend_schema(
+        summary="Account confirmation",
+        request=OpenApiRequest(
+            request=spectacular_serializers.ConfirmAccountSerializer,
+            examples=[
+                OpenApiExample(name="Example request body",
+                               value={"token": "huik23kijnmk4jnkjhbnklpsefg9ij", "email": "user@example.com"})
+            ]
+        ),
+        responses={
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad request',
+                examples=[
+                    OpenApiExample(
+                        name='Wrong token or email address',
+                        value={'Status': False, 'Errors': 'Wrong token or email address'}
+                    ),
+                    OpenApiExample(
+                        name='Required arguments have not been provided',
+                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
+                    )
+                ]
+            )
+        }
+    )
     # Регистрация методом POST
     def post(self, request, *args, **kwargs):
         """
@@ -177,9 +196,9 @@ class ConfirmAccount(APIView):
                 token.delete()
                 return JsonResponse({'Status': True})
             else:
-                return JsonResponse({'Status': False, 'Errors': 'Неправильно указан токен или email'})
+                return JsonResponse({'Status': False, 'Errors': 'Wrong token or email address'}, status=400)
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
 
 @extend_schema(tags=["users"])
