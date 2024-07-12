@@ -217,7 +217,49 @@ class AccountDetails(APIView):
     """
 
     # получить данные
-    @extend_schema(summary="Retrieve user data", request=OpenApiRequest(request=UserSerializer))
+    @extend_schema(
+        summary="Retrieve user data",
+        request=OpenApiRequest(request=UserSerializer),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[
+                    OpenApiExample(
+                        name='OK',
+                        value={
+                            "id": 3,
+                            "first_name": "Luke",
+                            "last_name": "Skyworker",
+                            "username": "LSkyworker-2024",
+                            "email": "user@example.com",
+                            "company": "Dream-team Ltd",
+                            "position": "Boss",
+                            "contacts": [
+                                {
+                                    "id": 1,
+                                    "city": "Test city",
+                                    "street": "Test street",
+                                    "house": "4",
+                                    "structure": "3",
+                                    "building": "2",
+                                    "apartment": "1",
+                                    "phone": "+01112223344"
+                                }
+                            ]
+                        }
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'})]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description='Any unexpected internal server errors')
+        }
+    )
     def get(self, request: Request, *args, **kwargs):
         """
                Retrieve the details of the authenticated user.
