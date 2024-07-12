@@ -202,22 +202,8 @@ class ConfirmAccount(APIView):
 
 
 @extend_schema(tags=["users"])
-@extend_schema_view(get=extend_schema(summary="Retrieve user data", request=UserSerializer),
-                    post=extend_schema(summary="Update user data",
-                                       request=spectacular_serializers.UserDataSerializer,
-                                       examples=[OpenApiExample(
-                                           name="Example request body",
-                                           value={
-                                               "first_name": "Luke",
-                                               "last_name": "Skyworker",
-                                               "username": "LSkyworker-2024",
-                                               "email": "user@example.com",
-                                               "password": "secretpass",
-                                               "company": "Dream-team Ltd",
-                                               "position": "Boss"
-                                           },
-                                           description="None of the fields is required."
-                                       )]))
+@extend_schema_view(
+    post=extend_schema())
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -231,6 +217,7 @@ class AccountDetails(APIView):
     """
 
     # получить данные
+    @extend_schema(summary="Retrieve user data", request=OpenApiRequest(request=UserSerializer))
     def get(self, request: Request, *args, **kwargs):
         """
                Retrieve the details of the authenticated user.
@@ -248,6 +235,60 @@ class AccountDetails(APIView):
         return Response(serializer.data)
 
     # Редактирование методом POST
+    @extend_schema(
+        summary="Update user data",
+        request=OpenApiRequest(
+            request=spectacular_serializers.UserDataSerializer,
+            examples=[
+                OpenApiExample(
+                    name="Example request body",
+                    value={
+                        "first_name": "Luke",
+                        "last_name": "Skyworker",
+                        "username": "LSkyworker-2024",
+                        "email": "user@example.com",
+                        "password": "secretpass",
+                        "company": "Dream-team Ltd",
+                        "position": "Boss"
+                    },
+                    description="None of the fields is required."
+                )
+            ]
+        ),
+        responses={
+            HTTP_200_OK: OpenApiResponse(response=spectacular_serializers.ResponseSerializer,
+                                         description="OK",
+                                         examples=[OpenApiExample(name='OK', value={"Status": True})]),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad request',
+                examples=[
+                    OpenApiExample(
+                        name='Not unique email address',
+                        value={"Status": False, "Errors": {"email": ["User with this email address already exists."]}}
+                    ),
+                    OpenApiExample(
+                        name='Incompliant password',
+                        value={
+                            "Status": False,
+                            "Errors": {
+                                "password": ["This password is too short. It must contain at least 8 characters."]
+                            }
+                        }
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[OpenApiExample(
+                    name='Log in required',
+                    value={'Status': False, 'Error': 'Log in required'}
+                )]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(description="Any unexpected internal server errors")
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
                 Update the account details of the authenticated user.
@@ -261,16 +302,9 @@ class AccountDetails(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        # validation of the filed names in the request body
-        available_fields = UserSerializer.Meta.fields[1:]
-        if not set(request.data.keys()).issubset(available_fields):
-            return JsonResponse({'Status': False, 'Error': 'Wrong field name (names)'}, status=400)
-
-        # проверяем обязательные аргументы
-
+        # password validation
         if 'password' in request.data:
             errors = {}
-            # проверяем пароль на сложность
             try:
                 validate_password(request.data['password'])
             except Exception as password_error:
@@ -278,17 +312,17 @@ class AccountDetails(APIView):
                 # noinspection PyTypeChecker
                 for item in password_error:
                     error_array.append(item)
-                return JsonResponse({'Status': False, 'Errors': {'password': error_array}})
+                return JsonResponse({'Status': False, 'Errors': {'password': error_array}}, status=400)
             else:
                 request.user.set_password(request.data['password'])
 
-        # проверяем остальные данные
+        # data validation
         user_serializer = UserSerializer(request.user, data=request.data, partial=True)
         if user_serializer.is_valid():
             user_serializer.save()
-            return JsonResponse({'Status': True})
+            return JsonResponse({'Status': True}, status=200)
         else:
-            return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
+            return JsonResponse({'Status': False, 'Errors': user_serializer.errors}, status=400)
 
 
 @extend_schema(tags=["users"])
