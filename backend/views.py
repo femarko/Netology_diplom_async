@@ -387,16 +387,12 @@ class LoginAccount(APIView):
                 """
         if {'email', 'password'}.issubset(request.data):
             user = authenticate(request, username=request.data['email'], password=request.data['password'])
-
             if user is not None:
                 if user.is_active:
                     token, _ = Token.objects.get_or_create(user=user)
-
-                    return JsonResponse({'Status': True, 'Token': token.key})
-
-            return JsonResponse({'Status': False, 'Errors': 'Не удалось авторизовать'})
-
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                    return JsonResponse({'Status': True, 'Token': token.key}, status=200)
+            return JsonResponse({'Status': False, 'Errors': 'Authentication is failed'}, status=403)
+        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
 
 @extend_schema(tags=["categories & products"])
