@@ -396,7 +396,33 @@ class LoginAccount(APIView):
 
 
 @extend_schema(tags=["categories & products"])
-@extend_schema_view(get=extend_schema(summary="Retrieve categories"))
+@extend_schema_view(
+    get=extend_schema(
+        summary="Retrieve categories",
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="OK",
+                examples=[
+                    OpenApiExample(
+                        name="OK",
+                        value={
+                            "count": 4,
+                            "next": 3,
+                            "previous": 1,
+                            "results": [
+                                [{"id": 5, "name": "Телевизоры"},
+                                {"id": 224, "name": "Смартфоны"},
+                                {"id": 15, "name": "Аксессуары"},
+                                {"id": 1, "name": "Flash-накопители"}]
+                            ]
+                        }
+                    )
+                ]
+            )
+        }
+    )
+)
 class CategoryView(ListAPIView):
     """
     Класс для просмотра категорий
