@@ -460,7 +460,20 @@ class CategoryView(ListAPIView):
 
 
 @extend_schema(tags=["shops & shopping"])
-@extend_schema_view(get=extend_schema(summary="Retrieve shops"))
+@extend_schema_view(
+    get=extend_schema(
+        summary="Retrieve shops",
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[OpenApiExample(name='OK', value={"id": 1, "name": "Shop_name", "state": True})]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
+)
 class ShopView(ListAPIView):
     """
     Класс для просмотра списка магазинов
