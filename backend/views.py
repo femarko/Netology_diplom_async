@@ -27,6 +27,7 @@ from ujson import loads as load_json, JSONDecodeError
 
 from celery.result import AsyncResult
 
+import backend.serializers
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
@@ -441,25 +442,12 @@ class LoginAccount(APIView):
         summary="Retrieve categories",
         responses={
             HTTP_200_OK: OpenApiResponse(
-                response=spectacular_serializers.ResponseSerializer,
+                response=backend.serializers.CategorySerializer,
                 description="OK",
-                examples=[
-                    OpenApiExample(
-                        name="OK",
-                        value={
-                            "count": 4,
-                            "next": 3,
-                            "previous": 1,
-                            "results": [
-                                [{"id": 5, "name": "Телевизоры"},
-                                {"id": 224, "name": "Смартфоны"},
-                                {"id": 15, "name": "Аксессуары"},
-                                {"id": 1, "name": "Flash-накопители"}]
-                            ]
-                        }
-                    )
-                ]
-            )
+                examples=[OpenApiExample(name="OK", value={'id': 5, 'name': 'Category 1'})]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
         }
     )
 )
