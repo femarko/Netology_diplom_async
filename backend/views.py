@@ -202,8 +202,6 @@ class ConfirmAccount(APIView):
 
 
 @extend_schema(tags=["users"])
-@extend_schema_view(
-    post=extend_schema())
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -368,13 +366,55 @@ class AccountDetails(APIView):
 
 
 @extend_schema(tags=["users"])
-@extend_schema_view(post=extend_schema(summary="Login", request=spectacular_serializers.LoginSerializer))
 class LoginAccount(APIView):
     """
     Класс для авторизации пользователей
     """
 
     # Авторизация методом POST
+    @extend_schema(
+        summary="Login",
+        request=OpenApiRequest(
+            request=spectacular_serializers.LoginSerializer,
+            examples=[
+                OpenApiExample(name="Example Value", value={"email": "test@email.com", "password": "secretpass"})
+                ]
+            ),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[
+                    OpenApiExample(
+                        name='OK',
+                        value={"Status": True, "Token": "48b8dmfg6dmb0mg6ebb3n43175ef6dad777d"}
+                    )
+                ]
+            ),
+            HTTP_400_BAD_REQUEST:OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad request',
+                examples=[
+                    OpenApiExample(
+                        name='Required arguments have not been provided',
+                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Forbidden",
+                examples=[
+                    OpenApiExample(
+                        name='Wrong email or password',
+                        value={'Status': False, 'Errors': 'Wrong password or email address'}
+                    )
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
                 Authenticate a user.
@@ -391,7 +431,7 @@ class LoginAccount(APIView):
                 if user.is_active:
                     token, _ = Token.objects.get_or_create(user=user)
                     return JsonResponse({'Status': True, 'Token': token.key}, status=200)
-            return JsonResponse({'Status': False, 'Errors': 'Authentication is failed'}, status=403)
+            return JsonResponse({'Status': False, 'Errors': 'Wrong password or email address'}, status=403)
         return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
 
