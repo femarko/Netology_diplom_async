@@ -483,10 +483,6 @@ class ShopView(ListAPIView):
 
 
 @extend_schema(tags=["categories & products"])
-@extend_schema_view(get=extend_schema(
-    summary="Retrieve the product information based on the specified filters",
-    parameters=[OpenApiParameter(name="shop_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
-                OpenApiParameter(name="category_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY)]))
 class ProductInfoView(APIView):
     """
         A class for searching products.
@@ -498,6 +494,45 @@ class ProductInfoView(APIView):
         - None
         """
 
+    @extend_schema(
+        summary="Retrieve the product information based on the specified filters",
+        parameters=[
+            OpenApiParameter(name="shop_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name="category_id", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY)
+        ],
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[
+                    OpenApiExample(
+                        name='OK',
+                        value=[
+                            {
+                                "id": 10,
+                                "model": "samsung/qled-q90r",
+                                "product": {
+                                    "name": "Samsung QLED Q90R 65\" 4K UHD Smart TV",
+                                    "category": "TV sets"
+                                },
+                                "shop": 1,
+                                "quantity": 4,
+                                "price": 2500,
+                                "price_rrc": 2999,
+                                "product_parameters": [
+                                    {"parameter": "Screen Size (inches)", "value": "65"},
+                                    {"parameter": "Resolution (pixels)", "value": "3840x2160"},
+                                    {"parameter": "Smart TV", "value": "True"}
+                                ]
+                            }
+                        ]
+                    )
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def get(self, request: Request, *args, **kwargs):
         """
                Retrieve the product information based on the specified filters.
