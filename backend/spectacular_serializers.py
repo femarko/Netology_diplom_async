@@ -77,3 +77,7 @@ class OrderSerializer(serializers.Serializer):
 class ResponseSerializer(serializers.Serializer):
     status = serializers.IntegerField()
     details = serializers.CharField()
+
+
+class PartnerUpdateTaskStatusSerializer(serializers.Serializer):
+    task_status = serializers.CharField()

@@ -1023,13 +1023,47 @@ class BasketView(APIView):
 
 
 @extend_schema(tags=["partners"])
-@extend_schema_view(get=extend_schema(summary="Partners' price-list update task status"))
 class PartnerUpdateTaskStatus(APIView):
-    '''The celery-task status is represented as a response of a get-request to a specific url'''
 
+    @extend_schema(
+        summary="Partners' price-list update task status",
+        request=OpenApiRequest(request=spectacular_serializers.PartnerUpdateTaskStatusSerializer),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.PartnerUpdateTaskStatusSerializer,
+                description='OK',
+                examples=[OpenApiExample(name='OK', value={"task_status": "SUCCESS"})]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
+                    OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def get(self, request: Request, task_id: str) -> JsonResponse:
+        """
+        Retrieve information regarding status of a celery-task
+        - Args:
+            - request (Request): DRF request object
+            - task_id: the celery-task ID
+
+        - Returns:
+            - JsonResponse describing status of the celery-task
+        """
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
+
         task: AsyncResult = AsyncResult(task_id)
-        return JsonResponse({'task_status': task.status})
+        return JsonResponse({'task_status': task.status}, status=200)
 
 
 @extend_schema(tags=["partners"])
