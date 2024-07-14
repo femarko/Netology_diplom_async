@@ -565,8 +565,6 @@ class ProductInfoView(APIView):
 
 
 @extend_schema(tags=["partners"])
-@extend_schema_view(post=extend_schema(summary="Update the partner information",
-                                       request=spectacular_serializers.PartnerUpdateSerializer))
 class PartnerUpdate(APIView):
     """
     A class for updating partner information.
@@ -578,22 +576,72 @@ class PartnerUpdate(APIView):
     Attributes:
     - None
     """
-
+    @extend_schema(
+        summary="Update the partner information",
+        request=OpenApiRequest(
+            request=spectacular_serializers.PartnerUpdateSerializer,
+            examples=[
+                OpenApiExample(
+                    name='Example Value',
+                    value={"url": "https://some_valid_url.com"}
+                )
+            ]
+        ),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[OpenApiExample(name='OK', value={"task_id": "4ef4c6a6-e0f0-4b79-b2bf-1bc6a0310eb3"})]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Required arguments have not been provided',
+                examples=[
+                    OpenApiExample(
+                        name='Required arguments have not been provided',
+                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
+                    ),
+                    OpenApiExample(
+                        name='Error occurred when updating price-list',
+                        value={'Status': False, 'Error': f'Error occurred when updating price-list'}
+                    ),
+                    OpenApiExample(
+                        name='Invalid URL',
+                        value={"Status": False, "Error": "['Enter a valid URL.']"}
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
+                    OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
-                Update the partner price list information.
+        Populating a partner's price list with data provided by a direct link to the partner's yaml-file.
 
-                Args:
-                - request (Request): The Django request object.
+        - Args:
+            - request (Request): DRF request object
+            - *args: positional arguments
+            - **kwargs: key-word arguments
 
-                Returns:
-                - JsonResponse: The response indicating the status of the operation and any errors.
-                """
+        - Returns:
+            - JsonResponse with a celery-task ID in case of success
+            - JsonResponse describing an error if the last occurs
+
+        """
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
 
         url = request.data.get('url')
         if url:
@@ -601,17 +649,19 @@ class PartnerUpdate(APIView):
             try:
                 validate_url(url)
             except ValidationError as e:
-                return JsonResponse({'Status': False, 'Error': str(e)})
+                return JsonResponse({'Status': False, 'Error': str(e)}, status=400)
             else:
                 user_id = request.user.id
                 try:
-                    asyns_result = update_price_list.delay(url, user_id)
-                    task_id = asyns_result.id
-                except:
-                    return JsonResponse({'Status': False, 'Error': 'Error occured when updating price-list'})
+                    async_result = update_price_list.delay(url, user_id)
+                    task_id = async_result.id
+                except Exception as err:
+                    return JsonResponse(
+                        {'Status': False, 'Error': f'Error occurred when updating price-list: {str(err)}'}, status=400
+                    )
                 else:
-                    return JsonResponse({'task_id': task_id})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                    return JsonResponse({'task_id': task_id}, status=200)
+        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
 
 @extend_schema(tags=["shops & shopping"])
