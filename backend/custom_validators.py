@@ -12,8 +12,10 @@ CONTENT_TYPES = ("application/json", "application/x-www-form-urlencoded", "multi
 def validate_content_type(request: Request, content_types: Iterable) -> None | JsonResponse:
     if True not in map(lambda content_type: request.content_type.startswith(content_type), content_types):
         return JsonResponse(
-            {'Status': False, 'Errors': f"{request.content_type} is unsupported media type. "
-                                        f"Expected media types: {content_types}"},
+            {
+                'Status': False,
+                'Errors': f"{request.content_type} is unsupported media type. Expected media types: {content_types}"
+            },
             status=415
         )
 

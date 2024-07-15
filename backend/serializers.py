@@ -14,6 +14,20 @@ class ContactSerializer(serializers.ModelSerializer):
         }
 
 
+class ContactPutSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=True)
+    city = serializers.CharField(required=False)
+    street = serializers.CharField(required=False)
+    phone = serializers.CharField(required=False)
+
+    class Meta:
+        model = Contact
+        fields = ('id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'user', 'phone')
+        extra_kwargs = {
+            'user': {'write_only': True}
+        }
+
+
 class RegisterAccountSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(read_only=True, many=True)
 

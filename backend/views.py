@@ -14,8 +14,8 @@ from django.db.models import Q, Sum, F
 from django.http import JsonResponse
 
 from rest_framework import serializers
-from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST, HTTP_403_FORBIDDEN, \
-    HTTP_404_NOT_FOUND, HTTP_415_UNSUPPORTED_MEDIA_TYPE, HTTP_500_INTERNAL_SERVER_ERROR
+from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_201_CREATED, HTTP_400_BAD_REQUEST,\
+    HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND, HTTP_415_UNSUPPORTED_MEDIA_TYPE, HTTP_500_INTERNAL_SERVER_ERROR
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -32,7 +32,7 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer, RegisterAccountSerializer, OrderItemPutSerializer, \
-    OrderPostSerializer, BasketPostSerializer
+    OrderPostSerializer, BasketPostSerializer, ContactPutSerializer
 from backend import spectacular_serializers
 from backend.custom_validators import json_parse, validate_keys_and_values, CONTENT_TYPES, validate_content_type, \
     get_request_items
@@ -595,7 +595,7 @@ class PartnerUpdate(APIView):
             ),
             HTTP_400_BAD_REQUEST: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                description='Required arguments have not been provided',
+                description='Error: Bad request',
                 examples=[
                     OpenApiExample(
                         name='Required arguments have not been provided',
@@ -683,10 +683,10 @@ class BasketView(APIView):
     @extend_schema(
         summary="Retrieve the items in the user's basket",
         responses={
-            HTTP_200_OK: OpenApiResponse(response=OrderSerializer, description="Success"),
+            HTTP_200_OK: OpenApiResponse(response=OrderSerializer, description="OK"),
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                description="Forbidden",
+                description="Error: Forbidden",
                 examples=[OpenApiExample(name="Log in required", value={"Status": False, "Error": "Log in required"})]
             ),
             HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
@@ -801,7 +801,8 @@ class BasketView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        content_type_validation_result = validate_content_type(request=request, content_types=CONTENT_TYPES)
+        content_type_validation_result: None | JsonResponse = validate_content_type(request=request,
+                                                                                    content_types=CONTENT_TYPES)
         if content_type_validation_result:
             return content_type_validation_result
 
@@ -911,7 +912,7 @@ class BasketView(APIView):
         responses={
             HTTP_200_OK: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
-                description="Success",
+                description="OK",
                 examples=[
                     OpenApiExample(name="Status: True", value={'Status': True, 'Number of objects updated': 2}),
                 ]
@@ -1298,44 +1299,6 @@ class PartnerOrders(APIView):
 
 
 @extend_schema(tags=["contacts"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the contact information of the authenticated user",
-                                      request=ContactSerializer),
-                    post=extend_schema(summary="Create a new contact for the authenticated user",
-                                       request=spectacular_serializers.ContactSerializer,
-                                       examples=[OpenApiExample("Request example",
-                                                                value={
-                                                                    "city": "Test city",
-                                                                    "street": "Test street",
-                                                                    "house": "4",
-                                                                    "structure": "3",
-                                                                    "building": "2",
-                                                                    "apartment": "1",
-                                                                    "phone": "+01112223344"
-                                                                },
-                                                                description='Only "city", "street" and "phone" values '
-                                                                            'are required.')]),
-                    delete=extend_schema(summary="Delete the contact of the authenticated user",
-                                         parameters=[OpenApiParameter(name="contact_ids",
-                                                                      type=OpenApiTypes.STR,
-                                                                      location=OpenApiParameter.QUERY,
-                                                                      required=True,
-                                                                      examples=[OpenApiExample('Example value',
-                                                                                               value="1,2,3")])]),
-                    put=extend_schema(summary="Partially or fully update of a contact record, relating to "
-                                              "authenticated user",
-                                      description="New values should be specified as request body parameters. In case "
-                                                  "of partial update only parameters representing amended values "
-                                                  "are needed.",
-                                      request=spectacular_serializers.ContactUpdateSerializer,
-                                      examples=[OpenApiExample(name="Example value",
-                                                               value={"id": "1",
-                                                                      "city": "Test city",
-                                                                      "street": "Test street",
-                                                                      "house": "4",
-                                                                      "structure": "3",
-                                                                      "building": "2",
-                                                                      "apartment": "1",
-                                                                      "phone": "+01112223344"})]))
 class ContactView(APIView):
     """
        A class for managing contact information.
@@ -1351,6 +1314,38 @@ class ContactView(APIView):
        """
 
     # получить мои контакты
+    @extend_schema(
+        summary="Retrieve the contact information of the authenticated user",
+        request=OpenApiRequest(request=ContactSerializer),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[OpenApiExample(
+                    name='OK',
+                    value=[{
+                        "id": 1,
+                        "city": "Test city",
+                        "street": "Test street",
+                        "house": "4",
+                        "structure": "3",
+                        "building": "2",
+                        "apartment": "1",
+                        "phone": "+01112223344"
+                    }]
+                )]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the contact information of the authenticated user.
@@ -1368,7 +1363,76 @@ class ContactView(APIView):
         serializer = ContactSerializer(contact, many=True)
         return Response(serializer.data)
 
-    # добавить новый контакт
+    @extend_schema(
+        summary="Create a new contact for the authenticated user",
+        request=OpenApiRequest(
+            request=spectacular_serializers.ContactSerializer,
+            examples=[
+                OpenApiExample(
+                    "Request example",
+                    value={
+                        "city": "Test city",
+                        "street": "Test street",
+                        "house": "4",
+                        "structure": "3",
+                        "building": "2",
+                        "apartment": "1",
+                        "phone": "+01112223344"
+                    },
+                    description='Only "city", "street" and "phone" values are required.'
+                )
+            ]
+        ),
+        responses={
+            HTTP_201_CREATED: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Created',
+                examples=[OpenApiExample(name='OK', value={'Status': True})]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad request',
+                examples=[
+                    OpenApiExample(
+                        name='Wrong fields or values',
+                        value={
+                            "Status": False,
+                            "Errors": {
+                                "street": ["This field is required."], "phone": ["This field may not be blank."]
+                            }
+                        }
+                    ),
+                    OpenApiExample(
+                        name="JSON parse error",
+                        value={
+                            "Status": False,
+                            "Errors": "JSON parse error - Invalid control character at: line 2 column 22 (char 24)"
+                        }
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
+                ]
+            ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Unsupported media type",
+                examples=[OpenApiExample(
+                    name="Unsupported media type",
+                    value={
+                        'Status': False,
+                        'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"
+                    }
+                )]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
                Create a new contact for the authenticated user.
@@ -1382,23 +1446,74 @@ class ContactView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if {'city', 'street', 'phone'}.issubset(request.data):
-            # request.data._mutable = True
-            mutable_request_data = request.data.copy()
-            # request.data.update({'user': request.user.id})
-            mutable_request_data.update({'user': request.user.id})
-            # serializer = ContactSerializer(data=request.data)
-            serializer = ContactSerializer(data=mutable_request_data)
+        validate_content_type_result: None | JsonResponse = validate_content_type(request=request,
+                                                                                  content_types=CONTENT_TYPES)
+        if validate_content_type_result:
+            return validate_content_type_result
 
-            if serializer.is_valid():
+        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(
+            request=request,
+            content_types=CONTENT_TYPES
+        )
+        if type(get_request_items_result) is JsonResponse:
+            return get_request_items_result
+
+        mutable_request_data = request.data.copy()
+        mutable_request_data.update({'user': request.user.id})
+        serializer = ContactSerializer(data=mutable_request_data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError:
+            return JsonResponse({'Status': False, 'Errors': serializer.errors}, status=400)
+        except Exception as err:
+            return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+        else:
+            try:
                 serializer.save()
-                return JsonResponse({'Status': True})
+            except Exception as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             else:
-                return JsonResponse({'Status': False, 'Errors': serializer.errors})
+                return JsonResponse({'Status': True}, status=201)
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+    @extend_schema(
+        summary="Delete the contact of the authenticated user",
+        request=OpenApiRequest(request=ContactSerializer),
+        parameters=[
+            OpenApiParameter(
+                name="contact_ids",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                examples=[OpenApiExample('Example value', value="1,2,3")]
+            )
+        ],
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[OpenApiExample(name="OK", value={'Status': True, 'Number of deleted objects': 1})]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad request',
+                examples=[
+                    OpenApiExample(
+                        name='Required arguments have not been provided',
+                        value={'Status': False, 'Errors': 'Required arguments have not been provided'})
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'})
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
 
-    # удалить контакт
+        }
+    )
     def delete(self, request, *args, **kwargs):
         """
                Delete the contact of the authenticated user.
@@ -1412,9 +1527,7 @@ class ContactView(APIView):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        # items_sting = request.data.get('items')
         items_sting = request.query_params.get('contact_ids')
-        # items_sting = request.headers.get('items')
 
         if items_sting:
             items_list = items_sting.split(',')
@@ -1427,37 +1540,132 @@ class ContactView(APIView):
 
             if objects_deleted:
                 deleted_count = Contact.objects.filter(query).delete()[0]
-                return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                return JsonResponse({'Status': True, 'Number of deleted objects': deleted_count}, status=200)
+        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
-    # редактировать контакт
+    @extend_schema(
+        summary="Partially or fully update of a contact record, relating to authenticated user",
+        description="New values should be specified as request body parameters. In case of partial update only "\
+                    "parameters representing new values are needed.",
+        request=OpenApiRequest(
+            request=spectacular_serializers.ContactUpdateSerializer,
+            examples=[
+                OpenApiExample(
+                    name="Example value",
+                    description="Only 'id' and parameters representing new values are needed.",
+                    value={
+                        "id": "1",
+                        "city": "Test city",
+                        "street": "Test street",
+                        "house": "4",
+                        "structure": "3",
+                        "building": "2",
+                        "apartment": "1",
+                        "phone": "+01112223344"
+                    }
+                )
+            ]
+        ),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[
+                    OpenApiExample(
+                        name="OK",
+                        value={'Status': True},
+                    )
+                ]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad request',
+                examples=[
+                    OpenApiExample(name='Wrong keys/values',
+                                   value={"Status": False, "Error": {"id": ["This field is required."]}}),
+                    OpenApiExample(
+                        name="JSON parse error",
+                        value={
+                            "Status": False,
+                            "Errors": "JSON parse error - Expecting ',' delimiter: line 4 column 3 (char 39)"
+                        }
+                    ),
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'})
+                ]
+            ),
+            HTTP_404_NOT_FOUND: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Not found',
+                examples=[
+                    OpenApiExample(name='Not found', value={'Status': False, 'Errors': 'No contact with such ID'})
+                ]
+            ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Unsupported media type",
+                examples=[OpenApiExample(
+                    name="Unsupported media type",
+                    value={
+                        'Status': False,
+                        'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"
+                    }
+                )]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+
+        }
+    )
     def put(self, request, *args, **kwargs):
+        """
+               Update the contact information of the authenticated user.
+
+               Args:
+               - request (Request): The Django request object.
+
+               Returns:
+               - JsonResponse: The response indicating the status of the operation and any errors.
+               """
+
         if not request.user.is_authenticated:
-            """
-                   Update the contact information of the authenticated user.
-
-                   Args:
-                   - request (Request): The Django request object.
-
-                   Returns:
-                   - JsonResponse: The response indicating the status of the operation and any errors.
-                   """
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
-        if 'id' in request.data:
-            if request.data['id'].isdigit():
-                contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
-                print(contact)
-                if contact:
-                    serializer = ContactSerializer(contact, data=request.data, partial=True)
-                    if serializer.is_valid():
-                        serializer.save()
-                        return JsonResponse({'Status': True})
+        content_type_validation_result: None | JsonResponse = validate_content_type(request=request,
+                                                                                    content_types=CONTENT_TYPES)
+        if content_type_validation_result:
+            return content_type_validation_result
+
+        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(
+            request=request,
+            content_types=CONTENT_TYPES
+        )
+        if type(get_request_items_result) is not JsonResponse:
+            data_to_validate = request.data.copy()
+            data_to_validate.update({"user": request.user.pk})
+            serializer = ContactPutSerializer(data=data_to_validate)
+            try:
+                serializer.is_valid(raise_exception=True)
+            except serializers.ValidationError:
+                return JsonResponse({'Status': False, 'Error': serializer.errors}, status=400)
+            except Exception as err:
+                return JsonResponse({'Status': False, 'Error': str(err)}, status=400)
+            else:
+                contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.pk)
+                if len(contact) > 0:
+                    try:
+                        contact.update(**serializer.validated_data)
+                    except Exception as err:
+                        return JsonResponse({'Status': False, 'Error': str(err)}, status=400)
                     else:
-                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
-                else:
-                    return JsonResponse({'Status': False, 'Errors': 'No contact with such id'})
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+                        return JsonResponse({'Status': True}, status=200)
+                return JsonResponse({'Status': False, 'Errors': 'No contact with such ID'}, status=404)
+        return get_request_items_result
 
 
 @extend_schema(tags=["shops & shopping"])
