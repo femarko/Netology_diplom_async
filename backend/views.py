@@ -1196,7 +1196,6 @@ class PartnerState(APIView):
 
 
 @extend_schema(tags=["partners"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the orders associated with the authenticated partner"))
 class PartnerOrders(APIView):
     """
     Класс для получения заказов поставщиками
@@ -1207,6 +1206,71 @@ class PartnerOrders(APIView):
     - None
     """
 
+    @extend_schema(
+        summary="Retrieve the orders associated with the authenticated partner",
+        request=OpenApiRequest(request=OrderSerializer),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=OrderSerializer,
+                description='OK',
+                examples=[
+                    OpenApiExample(
+                        name='OK',
+                        value=[
+                            {
+                                "id": 6,
+                                "ordered_items": [
+                                    {
+                                        "id": 141,
+                                        "product_info": {
+                                            "id": 29, "model": "apple/iphone/xs-max",
+                                            "product": {
+                                                "name": "Smartphone Apple iPhone XS Max 512GB (white)",
+                                                "category": "Smartphones"
+                                            },
+                                            "shop": 1,
+                                            "quantity": 14,
+                                            "price": 110000,
+                                            "price_rrc": 116990,
+                                            "product_parameters": [
+                                                {"parameter": "Diagonal (inch)", "value": "6.5"},
+                                                {"parameter": "Screen resolution (pixels)", "value": "2688x1242"},
+                                                {"parameter": "Internal Memory (GB)", "value": "512"},
+                                                {"parameter": "Colour", "value": "white"}
+                                            ]
+                                        },
+                                        "quantity": 3}
+                                ],
+                                "state": "new",
+                                "dt": "2024-07-10T14:13:49.906078Z",
+                                "total_sum": 655000,
+                                "contact": {
+                                    "id": 1,
+                                    "city": "Test city",
+                                    "street": "Test street",
+                                    "house": "4",
+                                    "structure": "3",
+                                    "building": "2",
+                                    "apartment": "1",
+                                    "phone": "+01112223344"
+                                }
+                            }
+                        ]
+                    )
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
+                    OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the orders associated with the authenticated partner.
@@ -1221,7 +1285,7 @@ class PartnerOrders(APIView):
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
 
         order = Order.objects.filter(
             ordered_items__product_info__shop__user_id=request.user.id).exclude(state='basket').prefetch_related(
