@@ -1067,16 +1067,6 @@ class PartnerUpdateTaskStatus(APIView):
 
 
 @extend_schema(tags=["partners"])
-@extend_schema_view(get=extend_schema(summary="Retrieve the state of a partner"),
-                    post=extend_schema(summary="Update the state of a partner",
-                                       request=spectacular_serializers.PartnerStateSerializer,
-                                       examples=[OpenApiExample(name="Request body example",
-                                                                value={"state": "True"},
-                                                                description="case-insensitive true values: "
-                                                                            "'y', 'yes', 't', 'true', 'on', '1'; "
-                                                                            "case-insensitive false values: "
-                                                                            "'n', 'no', 'f', 'false', 'off', '0'")]
-                                       ))
 class PartnerState(APIView):
     """
        A class for managing partner state.
@@ -1090,6 +1080,29 @@ class PartnerState(APIView):
        """
 
     # получить текущий статус
+    @extend_schema(
+        summary="Retrieve the state of a partner",
+        request=OpenApiRequest(request=ShopSerializer),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[
+                    OpenApiExample(name='OK', value={"id": 1, "name": "Shop_name", "state": True})
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
+                    OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the state of the partner.
@@ -1104,13 +1117,57 @@ class PartnerState(APIView):
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
 
         shop = request.user.shop
         serializer = ShopSerializer(shop)
         return Response(serializer.data)
 
     # изменить текущий статус
+    @extend_schema(
+        summary="Update the state of a partner",
+        request=OpenApiRequest(
+            request=spectacular_serializers.PartnerStateSerializer,
+            examples=[
+                OpenApiExample(
+                    name="Request body example",
+                    value={"state": "True"},
+                    description='case-insensitive true values: "y", "yes", "t", "true", "on", "1"; '
+                                'case-insensitive false values: "n", "no", "f", "false", "off", "0"')
+            ]
+        ),
+        responses={
+            HTTP_200_OK: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='OK',
+                examples=[
+                    OpenApiExample(name='OK', value={'Status': True})
+                ]
+            ),
+            HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Bad request',
+                examples=[
+                    OpenApiExample(
+                        name='Required arguments have not been provided',
+                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
+                    ),
+                    OpenApiExample(name="Unexpected value",
+                                   value={"Status": False, "Errors": "invalid truth value 'tru'"})
+                ]
+            ),
+            HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description='Error: Forbidden',
+                examples=[
+                    OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
+                    OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
+                ]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
+                                                            description="Any unexpected internal server errors")
+        }
+    )
     def post(self, request, *args, **kwargs):
         """
                Update the state of a partner.
@@ -1125,16 +1182,17 @@ class PartnerState(APIView):
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+            return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
         state = request.data.get('state')
         if state:
             try:
                 Shop.objects.filter(user_id=request.user.id).update(state=strtobool(state))
-                return JsonResponse({'Status': True})
             except ValueError as error:
-                return JsonResponse({'Status': False, 'Errors': str(error)})
+                return JsonResponse({'Status': False, 'Errors': str(error)}, status=400)
+            else:
+                return JsonResponse({'Status': True}, status=200)
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
 
 @extend_schema(tags=["partners"])
