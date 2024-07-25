@@ -28,9 +28,7 @@ def json_parse(request: Request) -> JsonResponse | None:
         return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
 
 
-def get_request_items(request: Request,
-                      content_types: tuple | list,
-                      expected_key: str = None) -> str | Iterable | Mapping| JsonResponse:
+def get_request_items(request: Request, expected_key: str = None) -> str | Iterable | Mapping| JsonResponse:
     """
 
     Args:
@@ -41,12 +39,12 @@ def get_request_items(request: Request,
     Returns:
 
     """
-    if request.content_type == content_types[0]:
+    if request.content_type == "application/json":
         parse_result: JsonResponse | None = json_parse(request=request)
         if parse_result:
             return parse_result
     if expected_key:
-        if request.content_type == content_types[0]:
+        if request.content_type == "application/json":
             try:
                 request_items: list | Iterable | Mapping = request.data[expected_key]
             except KeyError:

@@ -60,6 +60,19 @@ class ShopSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
+class PartnerStateSerializer(ShopSerializer):
+    state = serializers.BooleanField(required=True)
+
+    def validate(self, attrs):
+        if 'state' not in self.initial_data:
+            raise serializers.ValidationError(detail="Field 'state' is required")
+        return attrs
+
+    class Meta:
+        model = Shop
+        fields = ('state',)
+
+
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.StringRelatedField()
 

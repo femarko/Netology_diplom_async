@@ -32,7 +32,7 @@ from backend.models import Shop, Category, Product, ProductInfo, Parameter, Prod
     Contact, ConfirmEmailToken
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer, RegisterAccountSerializer, OrderItemPutSerializer, \
-    OrderPostSerializer, BasketPostSerializer, ContactPutSerializer
+    OrderPostSerializer, BasketPostSerializer, ContactPutSerializer, PartnerStateSerializer
 from backend import spectacular_serializers
 from backend.custom_validators import json_parse, validate_keys_and_values, CONTENT_TYPES, validate_content_type, \
     get_request_items
@@ -806,9 +806,7 @@ class BasketView(APIView):
         if content_type_validation_result:
             return content_type_validation_result
 
-        get_request_items_result: str | Iterable | Mapping = get_request_items(request=request,
-                                                                               content_types=CONTENT_TYPES,
-                                                                               expected_key="items")
+        get_request_items_result: str | Iterable | Mapping = get_request_items(request=request, expected_key="items")
 
         if type(get_request_items_result) is not JsonResponse:
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
@@ -993,7 +991,6 @@ class BasketView(APIView):
             return content_type_validation_result
 
         get_request_items_result: list | Iterable | JsonResponse = get_request_items(request=request,
-                                                                                     content_types=CONTENT_TYPES,
                                                                                      expected_key="items")
 
         if type(get_request_items_result) is not JsonResponse:
@@ -1124,7 +1121,6 @@ class PartnerState(APIView):
         serializer = ShopSerializer(shop)
         return Response(serializer.data)
 
-    # изменить текущий статус
     @extend_schema(
         summary="Update the state of a partner",
         request=OpenApiRequest(
@@ -1150,11 +1146,16 @@ class PartnerState(APIView):
                 description='Error: Bad request',
                 examples=[
                     OpenApiExample(
-                        name='Required arguments have not been provided',
-                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
+                        name='Serializer errors',
+                        value={'Status': False, 'Errors': {"state": ["Must be a valid boolean."]}}
                     ),
-                    OpenApiExample(name="Unexpected value",
-                                   value={"Status": False, "Errors": "invalid truth value 'tru'"})
+                    OpenApiExample(
+                        name="JSON parse error",
+                        value={
+                            "Status": False,
+                            "Errors": "JSON parse error - Invalid control character at: line 2 column 17 (char 18)"
+                        }
+                    )
                 ]
             ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
@@ -1164,6 +1165,17 @@ class PartnerState(APIView):
                     OpenApiExample(name='Log in required', value={'Status': False, 'Error': 'Log in required'}),
                     OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
                 ]
+            ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Unsupported media type",
+                examples=[OpenApiExample(
+                    name="Unsupported media type",
+                    value={
+                        'Status': False,
+                        'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"
+                    }
+                )]
             ),
             HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
                                                             description="Any unexpected internal server errors")
@@ -1179,21 +1191,36 @@ class PartnerState(APIView):
                Returns:
                - JsonResponse: The response indicating the status of the operation and any errors.
                """
+
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
+        validate_content_type_result: None | JsonResponse = validate_content_type(request=request,
+                                                                                  content_types=CONTENT_TYPES)
+        if validate_content_type_result:
+            return validate_content_type_result
+
+        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(request=request)
+        if type(get_request_items_result) is JsonResponse:
+            return get_request_items_result
+
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
-        state = request.data.get('state')
-        if state:
+
+        serializer = PartnerStateSerializer(data=request.data, instance=Shop.objects.filter(user_id=request.user.pk).first())
+        try:
+            serializer.is_valid(raise_exception=True)
+        except serializers.ValidationError:
+            return JsonResponse({'Status': False, 'Errors': serializer.errors}, status=400)
+        except Exception as err:
+            return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
+        else:
             try:
-                Shop.objects.filter(user_id=request.user.id).update(state=strtobool(state))
-            except ValueError as error:
-                return JsonResponse({'Status': False, 'Errors': str(error)}, status=400)
+                serializer.save()
+            except Exception as err:
+                return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             else:
                 return JsonResponse({'Status': True}, status=200)
-
-        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
 
 
 @extend_schema(tags=["partners"])
@@ -1451,10 +1478,7 @@ class ContactView(APIView):
         if validate_content_type_result:
             return validate_content_type_result
 
-        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(
-            request=request,
-            content_types=CONTENT_TYPES
-        )
+        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(request=request)
         if type(get_request_items_result) is JsonResponse:
             return get_request_items_result
 
@@ -1641,10 +1665,7 @@ class ContactView(APIView):
         if content_type_validation_result:
             return content_type_validation_result
 
-        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(
-            request=request,
-            content_types=CONTENT_TYPES
-        )
+        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(request=request,)
         if type(get_request_items_result) is not JsonResponse:
             data_to_validate = request.data.copy()
             data_to_validate.update({"user": request.user.pk})
@@ -1881,7 +1902,7 @@ class OrderView(APIView):
         if content_type_validation_result:
             return content_type_validation_result
 
-        get_request_items_result = get_request_items(request=request, content_types=CONTENT_TYPES)
+        get_request_items_result = get_request_items(request=request)
         if type(get_request_items_result) is not JsonResponse:
             serializer = OrderPostSerializer(data=request.data)
             try:
