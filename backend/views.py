@@ -599,11 +599,11 @@ class PartnerUpdate(APIView):
                 examples=[
                     OpenApiExample(
                         name='Required arguments have not been provided',
-                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
+                        value={'Status': False, 'Errors': 'Field "url" is required'}
                     ),
                     OpenApiExample(
                         name='Error occurred when updating price-list',
-                        value={'Status': False, 'Error': f'Error occurred when updating price-list'}
+                        value={'Status': False, 'Error': 'Error occurred when updating price-list'}
                     ),
                     OpenApiExample(
                         name='Invalid URL',
@@ -654,14 +654,14 @@ class PartnerUpdate(APIView):
                 user_id = request.user.id
                 try:
                     async_result = update_price_list.delay(url, user_id)
-                    task_id = async_result.id
                 except Exception as err:
                     return JsonResponse(
                         {'Status': False, 'Error': f'Error occurred when updating price-list: {str(err)}'}, status=400
                     )
                 else:
+                    task_id = async_result.id
                     return JsonResponse({'task_id': task_id}, status=200)
-        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
+        return JsonResponse({'Status': False, 'Errors': 'Field "url" is required'}, status=400)
 
 
 @extend_schema(tags=["shops & shopping"])
