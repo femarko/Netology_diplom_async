@@ -619,6 +619,17 @@ class PartnerUpdate(APIView):
                     OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
                 ]
             ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Unsupported media type",
+                examples=[OpenApiExample(
+                    name="Unsupported media type",
+                    value={
+                        'Status': False,
+                        'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"
+                    }
+                )]
+            ),
             HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
                                                             description="Any unexpected internal server errors")
         }
@@ -643,6 +654,11 @@ class PartnerUpdate(APIView):
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
 
+        content_type_validation_result: None | JsonResponse = validate_content_type(request=request,
+                                                                                    content_types=CONTENT_TYPES)
+        if content_type_validation_result:
+            return content_type_validation_result
+
         url = request.data.get('url')
         if url:
             validate_url = URLValidator()
@@ -660,6 +676,7 @@ class PartnerUpdate(APIView):
                     )
                 else:
                     task_id = async_result.id
+
                     return JsonResponse({'task_id': task_id}, status=200)
         return JsonResponse({'Status': False, 'Errors': 'Field "url" is required'}, status=400)
 
