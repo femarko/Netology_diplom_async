@@ -398,19 +398,33 @@ class LoginAccount(APIView):
                 examples=[
                     OpenApiExample(
                         name='Required arguments have not been provided',
-                        value={'Status': False, 'Errors': 'Required arguments have not been provided'}
-                    )
+                        value={'Status': False, 'Errors': 'Fields "email" and "password" are required'}
+                    ),
+                    OpenApiExample(name="JSON parse error",
+                                   value={
+                                       'Status': False,
+                                       'Errors': 'JSON parse error - Expecting value: line 4 column 23 (char 43)'
+                                   })
                 ]
             ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
                 description="Error: Forbidden",
                 examples=[
-                    OpenApiExample(
-                        name='Wrong email or password',
-                        value={'Status': False, 'Errors': 'Wrong password or email address'}
-                    )
+                    OpenApiExample(name='Wrong email or password',
+                                   value={'Status': False, 'Errors': 'Wrong password or email address'}),
                 ]
+            ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Unsupported media type",
+                examples=[OpenApiExample(
+                    name="Unsupported media type",
+                    value={
+                        'Status': False,
+                        'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"
+                    }
+                )]
             ),
             HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
                                                             description="Any unexpected internal server errors")
@@ -426,14 +440,22 @@ class LoginAccount(APIView):
                 Returns:
                     JsonResponse: The response indicating the status of the operation and any errors.
                 """
-        if {'email', 'password'}.issubset(request.data):
-            user = authenticate(request, username=request.data['email'], password=request.data['password'])
-            if user is not None:
-                if user.is_active:
-                    token, _ = Token.objects.get_or_create(user=user)
-                    return JsonResponse({'Status': True, 'Token': token.key}, status=200)
-            return JsonResponse({'Status': False, 'Errors': 'Wrong password or email address'}, status=403)
-        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
+        content_type_validation_result: None | JsonResponse = validate_content_type(request=request,
+                                                                                    content_types=CONTENT_TYPES)
+        if content_type_validation_result:
+            return content_type_validation_result
+
+        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(request=request)
+        if type(get_request_items_result) is not JsonResponse:
+            if {'email', 'password'}.issubset(request.data):
+                user = authenticate(request, username=request.data['email'], password=request.data['password'])
+                if user is not None:
+                    if user.is_active:
+                        token, _ = Token.objects.get_or_create(user=user)
+                        return JsonResponse({'Status': True, 'Token': token.key}, status=200)
+                return JsonResponse({'Status': False, 'Errors': 'Wrong password or email address'}, status=403)
+            return JsonResponse({'Status': False, 'Errors': 'Fields "email" and "password" are required'}, status=400)
+        return get_request_items_result
 
 
 @extend_schema(tags=["categories & products"])
