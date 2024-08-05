@@ -194,9 +194,26 @@ class ConfirmAccount(APIView):
                     OpenApiExample(
                         name='Required arguments have not been provided',
                         value={'Status': False, 'Errors': 'Required arguments have not been provided'}
-                    )
+                    ),
+                    OpenApiExample(name="JSON parse error",
+                                   value={
+                                       'Status': False,
+                                       'Errors': 'JSON parse error - Expecting value: line 4 column 23 (char 43)'
+                                   })
                 ]
-            )
+            ),
+            HTTP_415_UNSUPPORTED_MEDIA_TYPE: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Unsupported media type",
+                examples=[OpenApiExample(
+                    name="Unsupported media type",
+                    value={
+                        'Status': False,
+                        'Errors': f"Unsupported media type. Expected media types: {CONTENT_TYPES}"
+                    }
+                )]
+            ),
+            HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(description="Any unexpected internal server errors")
         }
     )
     # Регистрация методом POST
@@ -210,21 +227,28 @@ class ConfirmAccount(APIView):
                 Returns:
                 - JsonResponse: The response indicating the status of the operation and any errors.
                 """
-        # проверяем обязательные аргументы
-        if {'email', 'token'}.issubset(request.data):
+        content_type_validation_result: None | JsonResponse = validate_content_type(request=request,
+                                                                                    content_types=CONTENT_TYPES)
+        if content_type_validation_result:
+            return content_type_validation_result
 
-            token = ConfirmEmailToken.objects.filter(user__email=request.data['email'],
-                                                     key=request.data['token']).first()
-            if token:
-                token.user.is_active = True
-                token.user.save()
-                token.delete()
-                return JsonResponse({'Status': True})
-            else:
-                return JsonResponse({'Status': False, 'Errors': 'Wrong token or email address'}, status=400)
+        get_request_items_result: str | Iterable | Mapping | JsonResponse = get_request_items(request=request)
+        if type(get_request_items_result) is not JsonResponse:
+            # проверяем обязательные аргументы
+            if {'email', 'token'}.issubset(request.data):
 
-        return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
+                token = ConfirmEmailToken.objects.filter(user__email=request.data['email'],
+                                                         key=request.data['token']).first()
+                if token:
+                    token.user.is_active = True
+                    token.user.save()
+                    token.delete()
+                    return JsonResponse({'Status': True})
+                else:
+                    return JsonResponse({'Status': False, 'Errors': 'Wrong token or email address'}, status=400)
 
+            return JsonResponse({'Status': False, 'Errors': 'Required arguments have not been provided'}, status=400)
+        return get_request_items_result
 
 @extend_schema(tags=["users"])
 class AccountDetails(APIView):
