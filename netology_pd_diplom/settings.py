@@ -145,13 +145,13 @@ AUTH_USER_MODEL = 'backend.User'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # EMAIL_USE_TLS = True
 
-EMAIL_HOST = os.getenv('EMAIL_HOST')#'smtp.mail.ru'
+EMAIL_HOST = os.getenv('EMAIL_HOST')
 
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')#'netology.diplom@mail.ru'
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')#'RANGVKPEZ61jsCgTbsbG'
-EMAIL_PORT = os.getenv('EMAIL_PORT')#'465'
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL')#True
-SERVER_EMAIL = os.getenv('SERVER_EMAIL')#EMAIL_HOST_USER
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_PORT = os.getenv('EMAIL_PORT')
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL')
+SERVER_EMAIL = os.getenv('SERVER_EMAIL')
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
