@@ -16,7 +16,7 @@
 - контейнеризация: приложение Django REST framework, база данных Postgres, PG Admin, Celery worker, Redis "упакованы" в контейнеры с помощью Docker, Docker-compose
 - документирование: с использованием `drf-spectacular` сгенерирована интерактивная документация API-приложения:
   - [http://localhost:8000/api/docs/sw](http://localhost:8000/api/docs/sw "При запущенном приложении можно выполнять запросы")
-  - [http://localhost:8000/api/docs/redoc](http://localhost:8000/api/docs/sw "Выполнение запросов невозможно")
+  - [http://localhost:8000/api/docs/redoc](http://localhost:8000/api/docs/redoc "Выполнение запросов невозможно")
 
 
 ## Запуск:
