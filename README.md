@@ -17,7 +17,6 @@
 - документирование: с использованием `drf-spectacular` сгенерирована интерактивная документация API-приложения
 
 ## Запуск:
-- создать файл `.env`, где прописать параметры, включая имя и пароль созданной БД (образец: `.env.example`)
-- установить зависимости: `$ pip install -r requirements.txt`
-- запустить `Redis`: `$ docker-compose up`
-- запустить `Celery`: `$ celery -A netology_pd_diplom worker` _
+- создать файл `.env`, где прописать переменные окружения (образец: `.env.example`)
+- запуск проекта на локальном хосте: `docker-compose up -d`
+- создать суперпользователя: `docker-compose run --rm api_service sh -c "python manage.py createsuperuser"`
