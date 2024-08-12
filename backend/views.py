@@ -1227,10 +1227,13 @@ class PartnerState(APIView):
 
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
-
-        shop = request.user.shop
-        serializer = ShopSerializer(shop)
-        return Response(serializer.data)
+        try:
+            shop = request.user.shop
+        except Exception as err:
+            return JsonResponse({'Status': False, 'Error': str(err)}, status=400)
+        else:
+            serializer = ShopSerializer(shop)
+            return Response(serializer.data)
 
     @extend_schema(
         summary="Update the state of a partner",
@@ -1318,7 +1321,8 @@ class PartnerState(APIView):
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Only for shops'}, status=403)
 
-        serializer = PartnerStateSerializer(data=request.data, instance=Shop.objects.filter(user_id=request.user.pk).first())
+        serializer = PartnerStateSerializer(data=request.data,
+                                            instance=Shop.objects.filter(user_id=request.user.pk).first())
         try:
             serializer.is_valid(raise_exception=True)
         except serializers.ValidationError:
