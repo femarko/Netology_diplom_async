@@ -1208,6 +1208,13 @@ class PartnerState(APIView):
                     OpenApiExample(name='Only for shops', value={'Status': False, 'Error': 'Only for shops'}),
                 ]
             ),
+            HTTP_404_NOT_FOUND: OpenApiResponse(
+                response=spectacular_serializers.ResponseSerializer,
+                description="Error: Not found",
+                examples=[
+                    OpenApiExample(name="User has no shop", value={"Status": False, "Error": "User has no shop."})
+                ]
+            ),
             HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(response=None,
                                                             description="Any unexpected internal server errors")
         }
@@ -1230,7 +1237,7 @@ class PartnerState(APIView):
         try:
             shop = request.user.shop
         except Exception as err:
-            return JsonResponse({'Status': False, 'Error': str(err)}, status=400)
+            return JsonResponse({'Status': False, 'Error': str(err)}, status=404)
         else:
             serializer = ShopSerializer(shop)
             return Response(serializer.data)
