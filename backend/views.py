@@ -794,7 +794,46 @@ class BasketView(APIView):
     @extend_schema(
         summary="Retrieve the items in the user's basket",
         responses={
-            HTTP_200_OK: OpenApiResponse(response=OrderSerializer, description="OK"),
+            HTTP_200_OK: OpenApiResponse(
+                response=OrderSerializer,
+                description="OK",
+                examples=[
+                    OpenApiExample(
+                        name="OK",
+                        value=[
+                            {"id": 2,
+                             "ordered_items": [
+                                 {"id": 14,
+                                  "product_info": {
+                                      "id": 1,
+                                      "model": "apple/iphone/xs-max",
+                                      "product": {
+                                          "name": "Смартфон Apple iPhone XS Max 512GB (золотистый)",
+                                          "category": "Смартфоны"
+                                      },
+                                      "shop": 1,
+                                      "quantity": 10,
+                                      "price": 120000,
+                                      "price_rrc": 146990,
+                                      "product_parameters": [
+                                          {"parameter": "Диагональ (дюйм)", "value": "6.5"},
+                                          {"parameter": "Разрешение (пикс)", "value": "2688x1242"},
+                                          {"parameter": "Встроенная память (Гб)", "value": "512"},
+                                          {"parameter": "Цвет", "value": "золотистый"}
+                                      ]
+                                  },
+                                  "quantity": 1
+                                  }
+                             ],
+                             "state": "basket",
+                             "dt": "2024-08-13T14:00:09.882703Z",
+                             "total_sum": 120000,
+                             "contact": "null"
+                             }
+                        ]
+                    )
+                ]
+            ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=spectacular_serializers.ResponseSerializer,
                 description="Error: Forbidden",
