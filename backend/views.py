@@ -862,11 +862,7 @@ class BasketView(APIView):
                                    ),
                     OpenApiExample(
                         name="Serializer errors",
-                        value={
-                            "Status": False,
-                            "Data provided": [{"product_info": 1, "quantity": 2}],
-                            "Errors": [{"product_info_id": ["This field is required."]}]
-                        }
+                        value={"Status": False, "Errors": [{"product_info_id": ["This field is required."]}]}
                     ),
                     OpenApiExample(name="Integrity error",
                                    value={
@@ -1956,7 +1952,6 @@ class OrderView(APIView):
                     OpenApiExample(name="Serializer errors",
                                    value={
                                        "Status": False,
-                                       "Data provided": {"id_": "one", "contact_id": "'1'"},
                                        "Errors": {
                                            "id": ["This field is required."],
                                            "contact_id": ["A valid integer is required."]
@@ -2013,6 +2008,9 @@ class OrderView(APIView):
 
                Args:
                - request (Request): The Django request object.
+                - request body:
+                    - id - id of an order, state of which is to be changed
+                    - contact_id - id of an authenticated user's contact
 
                Returns:
                - JsonResponse: The response indicating the status of the operation and any errors.
@@ -2030,10 +2028,7 @@ class OrderView(APIView):
             try:
                 serializer.is_valid(raise_exception=True)
             except serializers.ValidationError:
-                return JsonResponse(
-                    {'Status': False, 'Data provided': serializer.initial_data, 'Errors': serializer.errors},
-                    status=400
-                )
+                return JsonResponse({'Status': False, 'Errors': serializer.errors}, status=400)
             except Exception as err:
                 return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             requested_order = Order.objects.filter(user_id=request.user.id, id=serializer.validated_data['id'])
