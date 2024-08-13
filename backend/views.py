@@ -962,7 +962,7 @@ class BasketView(APIView):
                 serializer.is_valid(raise_exception=True)
             except serializers.ValidationError:
                 return JsonResponse(
-                    {'Status': False, 'Data provided': get_request_items_result, 'Errors': serializer.errors},
+                    {'Status': False, 'Errors': serializer.errors},
                     status=400
                 )
             except Exception as err:
@@ -1078,11 +1078,7 @@ class BasketView(APIView):
                                        "Errors": "No ':' found when decoding object value"
                                    }),
                     OpenApiExample(name="Serializer errors",
-                                   value={
-                                       "Status": False,
-                                       "Data provided": [{"id": 1, "quantit": 2}],
-                                       "Errors": [{"quantity": ["This field is required."]}]
-                                   }),
+                                   value={"Status": False, "Errors": [{"quantity": ["This field is required."]}]}),
                 ]
             ),
             HTTP_403_FORBIDDEN: OpenApiResponse(
@@ -1096,10 +1092,7 @@ class BasketView(APIView):
                 examples=[
                     OpenApiExample(
                         name="Order is not found",
-                        value={
-                            "Status": False,
-                            "Data provided": [{"id": 1, "quantity": 2}],
-                            "Errors": "Order items with IDs provided are not found"}
+                        value={"Status": False, "Errors": "Order items with IDs provided are not found"}
                     )
                 ],
             ),
@@ -1146,10 +1139,7 @@ class BasketView(APIView):
             try:
                 serializer.is_valid(raise_exception=True)
             except serializers.ValidationError:
-                return JsonResponse(
-                    {'Status': False, 'Data provided': serializer.initial_data, 'Errors': serializer.errors},
-                    status=400
-                )
+                return JsonResponse({'Status': False, 'Errors': serializer.errors}, status=400)
             except Exception as err:
                 return JsonResponse({'Status': False, 'Errors': str(err)}, status=400)
             for order_item in serializer.validated_data:
@@ -1158,11 +1148,7 @@ class BasketView(APIView):
                 )
             if objects_updated != 0:
                 return JsonResponse({'Status': True, 'Number of objects updated': objects_updated}, status=200)
-            return JsonResponse(
-                {'Status': False, 'Data provided': serializer.initial_data,
-                 'Errors': 'Order items with IDs provided are not found'},
-                status=404
-            )
+            return JsonResponse({'Status': False, 'Errors': 'Order items with IDs provided are not found'}, status=404)
         return get_request_items_result
 
 
@@ -2073,10 +2059,7 @@ class OrderView(APIView):
             requested_order = Order.objects.filter(user_id=request.user.id, id=serializer.validated_data['id'])
             if not requested_order:
                 return JsonResponse(
-                    {
-                        'Status': False,
-                        'Errors': f"Order with 'id' = '{serializer.initial_data['id']}' not found"
-                    },
+                    {'Status': False, 'Errors': f"Order with 'id' = '{serializer.initial_data['id']}' not found"},
                     status=404
                 )
             try:
